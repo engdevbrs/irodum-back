@@ -181,7 +181,7 @@ a[x-apple-data-detectors] {
                     <td class="es-m-p0r es-m-p20b" valign="top" align="center" style="padding:0;Margin:0;width:180px">
                      <table width="100%" cellspacing="0" cellpadding="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
                        <tr>
-                        <td class="es-m-txt-c" align="left" style="padding:0;Margin:0;font-size:0px"><a target="_blank" href="https://www.irodum.com" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#FFFFFF;font-size:14px"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/favicon.png" alt style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" width="80"></a></td>
+                        <td class="es-m-txt-c" align="left" style="padding:0;Margin:0;font-size:0px"><a target="_blank" href="https://www.irodum.com" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#FFFFFF;font-size:14px"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/logotipo.png" alt style="display:block;border:0;outline:none;text-decoration:none;width: 200px;-ms-interpolation-mode:bicubic"></a></td>
                        </tr>
                      </table></td>
                    </tr>
@@ -400,7 +400,7 @@ const sendRequestEmail = async (userrequest) =>{
       <td class="es-m-p0r es-m-p20b" valign="top" align="center" style="padding:0;Margin:0;width:270px">
       <table width="100%" cellspacing="0" cellpadding="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
       <tr>
-      <td class="es-infoblock es-m-txt-c" align="left" style="padding:0;Margin:0;line-height:0px;font-size:0px;color:#CCCCCC"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/favicon.png" alt style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" width="60"></td>
+      <td class="es-infoblock es-m-txt-c" align="left" style="padding:0;Margin:0;line-height:0px;font-size:0px;color:#CCCCCC"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/logotipo.png" alt style="display:block;border:0;outline:none;text-decoration:none;width: 200px;-ms-interpolation-mode:bicubic"></td>
       </tr>
       </table></td>
       </tr>
@@ -564,7 +564,7 @@ const sendRequestResponseEmail = async (userresponse) =>{
       <td class="es-m-p0r es-m-p20b" valign="top" align="center" style="padding:0;Margin:0;width:270px">
       <table width="100%" cellspacing="0" cellpadding="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
       <tr>
-      <td class="es-infoblock es-m-txt-c" align="left" style="padding:0;Margin:0;line-height:0px;font-size:0px;color:#CCCCCC"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/favicon.png" alt style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" width="60"></td>
+      <td class="es-infoblock es-m-txt-c" align="left" style="padding:0;Margin:0;line-height:0px;font-size:0px;color:#CCCCCC"><img src="https://abcifx.stripocdn.email/content/guids/CABINET_09b10bf9dbe2eec52e0b58144f74fd97/images/logotipo.png" alt style="display:block;border:0;outline:none;text-decoration:none;width: 200px;-ms-interpolation-mode:bicubic"></td>
       </tr>
       </table></td>
       </tr>
