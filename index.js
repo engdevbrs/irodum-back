@@ -14,10 +14,10 @@ dotenv.config({path: './env/.env'})
 const mysql = require('mysql');
 const multer = require('multer');
 const emailer = require('./mail/mailer')
-
+app.use(express.static(path.join(__dirname,'./projects/downloads')))
+app.use(express.static(path.join(__dirname,'./projects/commentsdownload')))
 app.use(cors())
 app.use(express.json())
-app.use(express.static(path.join(__dirname,'./projects/downloads')))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -32,6 +32,17 @@ const diskstorage = multer.diskStorage({
 
 const uploadproject = multer({
     storage: diskstorage
+})
+
+const diskstorageComment = multer.diskStorage({
+    destination: path.join(__dirname, './projects/commentsupload'),
+    filename: (req, file, cb) =>{
+        cb(null, Date.now() + file.originalname)
+    }
+})
+
+const uploadComment = multer({
+    storage: diskstorageComment
 })
 
 app.post('/api/create-user',(req,res)=>{
@@ -233,7 +244,7 @@ app.get('/api/images/:key', (req, res) => {
 app.delete('/api/images/delete/:key', async (req, res) => {
     console.log(req.params)
     const key = req.params.key
-    const deleteStream = await deleteFileStream(key).promise()
+    await deleteFileStream(key).promise()
     res.send('previous photo deleted successfully')
 })
 
@@ -278,12 +289,76 @@ app.post('/api/image/upload-project',uploadproject.single('photofile'),async (re
                     }
                 })
             }else{
-                res.status(500).send('Error: El límite son 8 fotos por usuario')
+                res.status(500).send('Error: El límite son 4 fotos por usuario')
             }
 
         }
     })
 });
+
+app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (req,res)=>{
+
+    const body = JSON.parse(req.body.params)
+    let arrayFiles = []
+    const workerName = body[0]
+    const workerLastName = body[1]
+    const clientEmail = body[2]
+    const workerComment = body[3]
+    const workerEmail = body[4]
+    const aptitudRating = body[5]
+
+    for(let i = 0; i < (req.files).length; i++){
+        let filesComment = {
+            filename: fs.readFileSync(path.join(__dirname, './projects/commentsupload/' + (req.files[i]).filename)),
+            originalname: req.files[i].originalname
+        }
+        arrayFiles.push(filesComment)
+        await unlinkFile((req.files[i]).path)
+    }
+        
+    if((req.files).length <= 4){
+        const sqlRating = "INSERT INTO user_ratings(workerName,workerLastName,workerComment,evidencesComment,aptitudRating,workerEmail,clientEmail) VALUES(?,?,?,?,?,?,?)"
+        db.query(sqlRating,[workerName,workerLastName,workerComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),workerEmail,clientEmail],(err,result) =>{
+            if(err){
+                res.status(500).send('Problema subiendo evaluación')
+            }else{
+                res.send(result);
+            }
+        })
+    }
+});
+
+app.get('/api/worker/evaluations/:key',(req, res) => {
+    const userId = req.params.key
+    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
+    db.query(sqlGetEvaluations,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo evaluaciones')
+        }else{
+            result.map(image => {
+                let comment = JSON.parse(image.evidencesComment)
+                let commentToString = ""                    
+                comment.forEach(element => {
+                    commentToString = Buffer.from(element.filename)
+                    fs.writeFileSync(path.join(__dirname, './projects/commentsdownload/' + element.originalname),commentToString)
+                });
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/worker/ratings/:key',(req, res) => {
+    const userId = req.params.key
+    const sqlGetRatings = "SELECT ur.aptitudRating FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
+    db.query(sqlGetRatings,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo evaluaciones')
+        }else{
+            res.send(result)
+        }
+    })
+})
 
 app.get('/api/image/user-projects',validateToken, (req, res) => {
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
