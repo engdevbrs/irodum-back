@@ -267,6 +267,8 @@ app.post('/api/image/upload-project',uploadproject.single('photofile'),async (re
     const userLogged = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
     const file = req.file
     const name = body.name
+    const clientcell = body.phone
+    const clientemail = body.email
     const workresume = body.workresume
     const originalname = file.originalname
     const username = userLogged.userName
@@ -275,13 +277,13 @@ app.post('/api/image/upload-project',uploadproject.single('photofile'),async (re
     const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + file.filename))
     await unlinkFile(file.path)
     const sqlLimit = "SELECT * FROM projects_user WHERE projects_user.userName="+mysql.escape(userLogged.userName)
-    const sqlInsert1 = "INSERT INTO projects_user(clientName,imageName,userName,workDate,imageClient,imageType,workResume) VALUES(?,?,?,?,?,?,?)"
+    const sqlInsert1 = "INSERT INTO projects_user(clientName,imageName,userName,workDate,imageClient,imageType,workResume,clientCell,clientEmail) VALUES(?,?,?,?,?,?,?,?,?)"
     db.query(sqlLimit,(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo Foto')
         }else{
             if(result.length <= 8){
-                db.query(sqlInsert1,[name, originalname, username, workdate, imageClient , filetype, workresume],(err,result) =>{
+                db.query(sqlInsert1,[name, originalname, username, workdate, imageClient , filetype, workresume,clientcell,clientemail],(err,result) =>{
                     if(err){
                         res.status(500).send('Problema subiendo Foto')
                     }else{
