@@ -16,6 +16,7 @@ const multer = require('multer');
 const emailer = require('./mail/mailer')
 app.use(express.static(path.join(__dirname,'./projects/downloads')))
 app.use(express.static(path.join(__dirname,'./projects/commentsdownload')))
+app.use(express.static(path.join(__dirname,'./projects/especialitydownload')))
 app.use(cors())
 app.use(express.json())
 app.use(bodyParser.json())
@@ -43,6 +44,17 @@ const diskstorageComment = multer.diskStorage({
 
 const uploadComment = multer({
     storage: diskstorageComment
+})
+
+const diskstorageEspeciality = multer.diskStorage({
+    destination: path.join(__dirname, './projects/especialityUpload'),
+    filename: (req, file, cb) =>{
+        cb(null, Date.now() + file.originalname)
+    }
+})
+
+const uploadEspeciality = multer({
+    storage: diskstorageEspeciality
 })
 
 app.post('/api/create-user',(req,res)=>{
@@ -261,6 +273,19 @@ app.delete('/api/image/delete-project:key',(req, res) => {
     })
 })
 
+app.delete('/api/delete-especiality:key',(req, res) => {
+    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
+    const idespeciality = req.params.key
+    const sqlDelete = "DELETE FROM workerEspeciality WHERE workerEspeciality.EmailWorkerEspeciality="+mysql.escape(userLogged.userName)+"AND workerEspeciality.idworkerEspeciality="+mysql.escape(idespeciality);
+    db.query(sqlDelete,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema eliminando Foto')
+        }else{
+            res.send(result)
+        }
+    })
+})
+
 app.post('/api/image/upload-project',uploadproject.single('photofile'),async (req,res)=>{
     const body = JSON.parse(req.body.params)
     const token = req.body.token
@@ -300,6 +325,8 @@ app.post('/api/image/upload-project',uploadproject.single('photofile'),async (re
 
 app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (req,res)=>{
 
+    const date = new Date()
+    const dateComment = date.toLocaleDateString()
     const body = JSON.parse(req.body.params)
     let arrayFiles = []
     const workerName = body[0]
@@ -319,8 +346,8 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     }
         
     if((req.files).length <= 4){
-        const sqlRating = "INSERT INTO user_ratings(workerName,workerLastName,workerComment,evidencesComment,aptitudRating,workerEmail,clientEmail) VALUES(?,?,?,?,?,?,?)"
-        db.query(sqlRating,[workerName,workerLastName,workerComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),workerEmail,clientEmail],(err,result) =>{
+        const sqlRating = "INSERT INTO user_ratings(workerName,workerLastName,workerComment,evidencesComment,aptitudRating,workerEmail,clientEmail,dateComment) VALUES(?,?,?,?,?,?,?,?)"
+        db.query(sqlRating,[workerName,workerLastName,workerComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),workerEmail,clientEmail,dateComment],(err,result) =>{
             if(err){
                 res.status(500).send('Problema subiendo evaluación')
             }else{
@@ -330,9 +357,32 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     }
 });
 
+app.post('/api/upload/speciality',uploadEspeciality.array('specialityFormFile',10),async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const arrayEspecialityDescript = JSON.parse(req.body.params)
+    let arrayFilesEsp = []
+
+    let filesEspeciality = {
+        filename: fs.readFileSync(path.join(__dirname, './projects/especialityUpload/' + (req.files[0]).filename)),
+        originalname: req.files[0].originalname
+    }
+    arrayFilesEsp.push(filesEspeciality)
+    await unlinkFile((req.files[0]).path)
+
+    const sqlEspeciality = "INSERT INTO workerEspeciality(especialityDescript,especialityDoc,EmailWorkerEspeciality,fileType) VALUES(?,?,?,?)"
+    db.query(sqlEspeciality,[JSON.stringify(arrayEspecialityDescript),JSON.stringify(arrayFilesEsp),userLogged.userName,req.files[0].mimetype],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema subiendo especialidad')
+        }else{
+            res.send(result);
+        }
+    })
+});
+
 app.get('/api/worker/evaluations/:key',(req, res) => {
     const userId = req.params.key
-    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
+    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail, ur.dateComment FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
     db.query(sqlGetEvaluations,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo evaluaciones')
@@ -343,6 +393,26 @@ app.get('/api/worker/evaluations/:key',(req, res) => {
                 comment.forEach(element => {
                     commentToString = Buffer.from(element.filename)
                     fs.writeFileSync(path.join(__dirname, './projects/commentsdownload/' + element.originalname),commentToString)
+                });
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/download/speciality/:key', (req, res) => {
+    const userId = req.params.key
+    const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM workerEspeciality we, user_info ui  WHERE ui.email=we.EmailWorkerEspeciality AND ui.id="+mysql.escape(userId);
+    db.query(sqlGetEspecilities,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo especialidades')
+        }else{
+            result.map(image => {
+                let comment = JSON.parse(image.especialityDoc)
+                let commentToString = ""                    
+                comment.forEach(element => {
+                    commentToString = Buffer.from(element.filename)
+                    fs.writeFileSync(path.join(__dirname, './projects/especialitydownload/' + element.originalname),commentToString)
                 });
             })
             res.send(result)
