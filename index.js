@@ -571,6 +571,61 @@ app.put('/api/update/agreement/',async (req,res)=>{
     
 });
 
+app.get('forgot-password',(req,resp,next) =>{
+
+})
+
+app.post('/api/recover-password',async (req,res,next) =>{
+    const userToRecover = req.body.mailValue
+    const sqlGetUser = "SELECT u.userName, u.userPass,ui.id FROM user_credentials u, user_info ui WHERE u.userName ="+mysql.escape(userToRecover)+" AND ui.email = u.userName";
+    db.query(sqlGetUser,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema buscando información del usuario')
+        }else{
+            if(result.length < 1){
+                res.status(204).send('Usuario no registrado')
+            }else{
+                const secret = process.env.SECRET + result[0].userPass
+                const payload = {
+                    email: result[0].userName,
+                    id: result[0].id
+                }
+                const token = jwt.sign(payload,secret, { expiresIn: '15m' })
+                const link = `http://d2tdlyl8u1ln8a.cloudfront.net/resetear-password/${result[0].id}/${token}`
+                const objectResetPass = {
+                    mail: result[0].userName,
+                    enlace: link
+                }
+                emailer.sendResetPasswordLink(objectResetPass)
+                res.send(result);
+            }
+        }
+    })
+})
+
+app.get('/resetear-password/:id/:token',(req,res,next) =>{
+    const { id, token } = req.params
+    const sqlGetUser = "SELECT u.userName, u.userPass,ui.id FROM user_credentials u, user_info ui WHERE ui.id ="+mysql.escape(id)+" AND ui.email = u.userName";
+    db.query(sqlGetUser,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema buscando información del usuario')
+        }else{
+            if(result.length < 1){
+                res.status(204).send('Id de usuario inválido')
+                return;
+            }
+            try {
+                const secret = process.env.SECRET + result[0].userPass
+                const payload = jwt.verify(token,secret)
+                res.status(200).send(result[0].userName)
+            }catch(error){
+                res.status(404).send('El enlace ha expirado.')
+            }
+        }
+    })
+})
+
+
 function generateAccessToken(data){
     return jwt.sign(data,process.env.SECRET, {expiresIn: '60m'});
 }
