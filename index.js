@@ -209,12 +209,11 @@ app.put('/api/update-user', validateToken,(req,res)=>{
     instagram = (dataToUpdate[1].value === undefined || dataToUpdate[1].value === null) ? "" : dataToUpdate[1].value;
     facebook = (dataToUpdate[2].value === undefined || dataToUpdate[2].value === null) ? "" : dataToUpdate[2].value;
     twitter = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
-    whatsapp = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
-    cell = dataToUpdate[5].value;
-    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
+    cell = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
+    colorInput = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
 
     const sqlUpdate1 = "UPDATE user_info SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
-    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)+",whatsappSite="+mysql.escape(whatsapp)
+    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
     +",userColor="+mysql.escape(colorInput)+"WHERE user_info.email="+mysql.escape(userLogged.userName);
 
     db.query(sqlUpdate1,(err,result) =>{
@@ -540,7 +539,6 @@ app.post('/api/requestEmail',async (req,res)=>{
 });
 
 app.put('/api/update/agreement/',async (req,res)=>{
-    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
     const estado = req.body.estado;
     const idRequest = parseInt(req.body.idRequest,10);
     const buttonactioned = req.body.actionbutton;
@@ -571,7 +569,17 @@ app.put('/api/update/agreement/',async (req,res)=>{
     
 });
 
-app.get('forgot-password',(req,resp,next) =>{
+app.put('/api/forgot-password', (req,res,next) =>{
+    const password = req.body.password
+    const user = req.body.email
+    const sqlUpdatePassword = "UPDATE user_credentials SET userPass="+mysql.escape(password)+"WHERE user_credentials.userName="+mysql.escape(user);
+    db.query(sqlUpdatePassword,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
 
 })
 
