@@ -569,6 +569,22 @@ app.put('/api/update/agreement/',async (req,res)=>{
     
 });
 
+app.put('/api/user/request-confirm/',async (req,res)=>{
+    const estado = req.body.estado;
+    const idRequest = parseInt(req.body.idRequest,10);
+    const startDate = req.body.startDate;
+
+    const sqlUpdateRequest = "UPDATE work_requests SET estado="+mysql.escape(estado)+", startDate="+mysql.escape(startDate)+"WHERE work_requests.idRequest="+mysql.escape(idRequest);
+    db.query(sqlUpdateRequest,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
+    
+});
+
 app.put('/api/forgot-password', (req,res,next) =>{
     const password = req.body.password
     const user = req.body.email
