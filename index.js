@@ -205,12 +205,12 @@ app.put('/api/update-user', validateToken,(req,res)=>{
 
     const dataToUpdate  = req.body.newArrayValues
 
-    website = (dataToUpdate[0].value === undefined || dataToUpdate[0].value === null) ? "" : dataToUpdate[0].value;
-    instagram = (dataToUpdate[1].value === undefined || dataToUpdate[1].value === null) ? "" : dataToUpdate[1].value;
-    facebook = (dataToUpdate[2].value === undefined || dataToUpdate[2].value === null) ? "" : dataToUpdate[2].value;
-    twitter = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
-    cell = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
-    colorInput = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
+    website = (dataToUpdate[1].value === undefined || dataToUpdate[1].value === null) ? "" : dataToUpdate[1].value;
+    instagram = (dataToUpdate[2].value === undefined || dataToUpdate[2].value === null) ? "" : dataToUpdate[2].value;
+    facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
+    twitter = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
+    cell = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
+    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
 
     const sqlUpdate1 = "UPDATE user_info SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
     +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
@@ -538,6 +538,17 @@ app.post('/api/requestEmail',async (req,res)=>{
     res.send(response)
 });
 
+app.post('/api/contact-email',async (req,res)=>{
+    const userObjectRequest = {
+        nameClient: req.body.clienteName,
+        emailClient: req.body.email,
+        cellClient: req.body.cell,
+        message: req.body.message,
+    }
+    const response = await emailer.sendContactMessagge(userObjectRequest)
+    res.send(response)
+});
+
 app.put('/api/update/agreement/',async (req,res)=>{
     const estado = req.body.estado;
     const idRequest = parseInt(req.body.idRequest,10);
@@ -583,6 +594,35 @@ app.put('/api/user/request-confirm/',async (req,res)=>{
         }
     })
     
+});
+
+app.put('/api/user/request-reject/',async (req,res)=>{
+    const estado = req.body.estado;
+    const idRequest = parseInt(req.body.idRequest,10);
+
+    const sqlUpdateRequest = "UPDATE work_requests SET estado="+mysql.escape(estado)+"WHERE work_requests.idRequest="+mysql.escape(idRequest);
+    db.query(sqlUpdateRequest,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
+    
+});
+
+app.put('/api/worker/update-rating/:key',async (req,res)=>{
+    const idWorker = req.params.key;
+    const rank = req.body.rankingTotal;
+
+    const sqlUpdateRating = "UPDATE user_info SET ranking="+mysql.escape(rank)+"WHERE user_info.id="+mysql.escape(idWorker);
+    db.query(sqlUpdateRating,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
 });
 
 app.put('/api/forgot-password', (req,res,next) =>{
