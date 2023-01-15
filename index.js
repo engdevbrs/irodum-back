@@ -75,11 +75,11 @@ app.post('/api/create-user',(req,res)=>{
     const agreeconditions = req.body.agreeconditions;
     const type = "independiente";
 
-    const sqlInsert1 = "INSERT INTO user_info(rutUser,nameUser,lastnamesUser,bornDate,cellphone,email,regionUser,cityUser,communeUser,workareaUser,chargeUser,experienceYears,workResume,agreeconditions)" + 
-    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert1 = "INSERT INTO user_info(rutUser,nameUser,lastnamesUser,bornDate,cellphone,email,regionUser,cityUser,communeUser,workareaUser,chargeUser,experienceYears,workResume,agreeconditions,?)" + 
+    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     const sqlInsert2 = "INSERT INTO user_credentials(userName, userPass,accountType)" + 
     "VALUES(?,?,?)";
-    db.query(sqlInsert1,[rut,name,lastname,bornDate,phone,email,region,city,comunne,area,role,yearsExperience,resume,agreeconditions],(err,result)=>{
+    db.query(sqlInsert1,[rut,name,lastname,bornDate,phone,email,region,city,comunne,area,role,yearsExperience,resume,agreeconditions,type],(err,result)=>{
         if(err){
             res.status(500).send({ error: 'Algo falló!' });
         }else{
@@ -97,7 +97,8 @@ app.post('/api/create-user',(req,res)=>{
 app.post('/api/create-user-pyme',(req,res)=>{
 
     const razonSocial = req.body.name;
-    const economicActivity = req.body.economicActivity;
+    let economicActivity = req.body.economicActivity;
+    economicActivity = economicActivity.charAt(0).toUpperCase() + economicActivity.slice(1).toLowerCase()
     const rut = req.body.rut;
     const phone = req.body.phone;
     const email = req.body.email;
@@ -110,11 +111,11 @@ app.post('/api/create-user-pyme',(req,res)=>{
     const agreeconditions = req.body.agreeconditions;
     const type = "pyme";
 
-    const sqlInsert1 = "INSERT INTO user_pyme(rutUser,razonSocial,economicActivity,cellphone,email,regionUser,cityUser,communeUser,experienceYears,workResume,agreeconditions)" + 
-    "VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert1 = "INSERT INTO user_pyme(rutUser,razonSocial,economicActivity,cellphone,email,regionUser,cityUser,communeUser,experienceYears,workResume,agreeconditions,accountType)" + 
+    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
     const sqlInsert2 = "INSERT INTO user_credentials(userName, userPass,accountType)" + 
     "VALUES(?,?,?)";
-    db.query(sqlInsert1,[rut,razonSocial,economicActivity,phone,email,region,city,comunne,yearsExperience,resume,agreeconditions],(err,result)=>{
+    db.query(sqlInsert1,[rut,razonSocial,economicActivity,phone,email,region,city,comunne,yearsExperience,resume,agreeconditions,type],(err,result)=>{
         if(err){
             res.status(500).send({ error: 'Algo falló!' });
         }else{
@@ -147,7 +148,7 @@ app.post('/api/login', (req,res)=>{
     })
 });
 
-app.get('/api/localidades', (req,res)=>{
+app.get('/api/localidades', async(req,res)=>{
     res.header("Access-Control-Allow-Origin", "*");
     const sqlGetLocalidades = "SELECT r.region, p.provincia, c.comuna FROM regiones r, provincias p, comunas c  WHERE r.id = p.region_id AND p.id = c.provincia_id ORDER BY r.region ASC, p.provincia"
     db.query(sqlGetLocalidades,(err,result) =>{
@@ -187,9 +188,21 @@ app.get('/api/localidades', (req,res)=>{
     })
 });
 
-app.get('/api/usuarios', (req,res)=>{
+app.get('/api/usuarios', async (req,res)=>{
     res.header("Access-Control-Allow-Origin", "*");
     const sqlGetUsers = "SELECT * FROM user_info"
+    db.query(sqlGetUsers,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.get('/api/pymes', async (req,res)=>{
+    res.header("Access-Control-Allow-Origin", "*");
+    const sqlGetUsers = "SELECT * FROM user_pyme"
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -215,6 +228,18 @@ app.get('/api/user-profile/:key', (req,res)=>{
 app.get('/api/view/profile/:key', (req,res)=>{
     const userId = req.params.key
     const sqlGetUsers = "SELECT * FROM user_info WHERE user_info.id="+mysql.escape(userId)
+    db.query(sqlGetUsers,(err,result) =>{
+        if(err){
+            res.status(500).send(err);
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.get('/api/view/profile-pyme/:key', (req,res)=>{
+    const userId = req.params.key
+    const sqlGetUsers = "SELECT * FROM user_pyme WHERE user_pyme.iduser_pyme="+mysql.escape(userId)
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -259,11 +284,12 @@ app.put('/api/update-user', validateToken,(req,res)=>{
     facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
     twitter = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
     cell = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
-    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
+    exp = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "0" : dataToUpdate[6].value;
+    colorInput = (dataToUpdate[7].value === undefined || dataToUpdate[7].value === null) ? "" : dataToUpdate[7].value;
 
     const sqlUpdate1 = "UPDATE user_info SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
     +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
-    +",userColor="+mysql.escape(colorInput)+"WHERE user_info.email="+mysql.escape(userLogged.userName);
+    +",userColor="+mysql.escape(colorInput)+",experienceYears="+mysql.escape(exp)+"WHERE user_info.email="+mysql.escape(userLogged.userName);
 
     db.query(sqlUpdate1,(err,result) =>{
         if(err){
@@ -274,7 +300,7 @@ app.put('/api/update-user', validateToken,(req,res)=>{
     })
 });
 
-app.put('/api/update-pyme', validateToken,(req,res)=>{
+app.put('/api/update-pyme', validateToken, async (req,res)=>{
 
     const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
 
@@ -285,11 +311,12 @@ app.put('/api/update-pyme', validateToken,(req,res)=>{
     facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
     twitter = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
     cell = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
-    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
+    exp = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "0" : dataToUpdate[6].value;
+    colorInput = (dataToUpdate[7].value === undefined || dataToUpdate[7].value === null) ? "" : dataToUpdate[7].value;
 
     const sqlUpdate1 = "UPDATE user_pyme SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
     +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
-    +",userColor="+mysql.escape(colorInput)+"WHERE user_pyme.email="+mysql.escape(userLogged.userName);
+    +",userColor="+mysql.escape(colorInput)+",experienceYears="+mysql.escape(exp)+"WHERE user_pyme.email="+mysql.escape(userLogged.userName);
 
     db.query(sqlUpdate1,(err,result) =>{
         if(err){
@@ -470,7 +497,7 @@ app.post('/api/upload/speciality',uploadEspeciality.array('specialityFormFile',1
     })
 });
 
-app.get('/api/worker/evaluations/:key',(req, res) => {
+app.get('/api/worker/evaluations/:key',async (req, res) => {
     const userId = req.params.key
     const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail, ur.dateComment FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
     db.query(sqlGetEvaluations,(err,result) =>{
@@ -490,7 +517,27 @@ app.get('/api/worker/evaluations/:key',(req, res) => {
     })
 })
 
-app.get('/api/download/speciality/:key', (req, res) => {
+app.get('/api/worker/evaluations-pyme/:key',async (req, res) => {
+    const userId = req.params.key
+    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail, ur.dateComment FROM user_ratings ur, user_pyme up WHERE up.email=ur.workerEmail AND up.iduser_pyme="+mysql.escape(userId);
+    db.query(sqlGetEvaluations,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo evaluaciones')
+        }else{
+            result.map(image => {
+                let comment = JSON.parse(image.evidencesComment)
+                let commentToString = ""                    
+                comment.forEach(element => {
+                    commentToString = Buffer.from(element.filename)
+                    fs.writeFileSync(path.join(__dirname, './projects/commentsdownload/' + element.originalname),commentToString)
+                });
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/download/speciality/:key', async (req, res) => {
     const userId = req.params.key
     const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM workerEspeciality we, user_info ui  WHERE ui.email=we.EmailWorkerEspeciality AND ui.id="+mysql.escape(userId);
     db.query(sqlGetEspecilities,(err,result) =>{
@@ -510,7 +557,7 @@ app.get('/api/download/speciality/:key', (req, res) => {
     })
 })
 
-app.get('/api/download/speciality-pyme/:key', (req, res) => {
+app.get('/api/download/speciality-pyme/:key', async (req, res) => {
     const userId = req.params.key
     const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM workerEspeciality we, user_pyme up  WHERE up.email=we.EmailWorkerEspeciality AND up.iduser_pyme="+mysql.escape(userId);
     db.query(sqlGetEspecilities,(err,result) =>{
@@ -530,7 +577,7 @@ app.get('/api/download/speciality-pyme/:key', (req, res) => {
     })
 })
 
-app.get('/api/worker/ratings/:key',(req, res) => {
+app.get('/api/worker/ratings/:key',async (req, res) => {
     const userId = req.params.key
     const sqlGetRatings = "SELECT ur.aptitudRating FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
@@ -542,7 +589,7 @@ app.get('/api/worker/ratings/:key',(req, res) => {
     })
 })
 
-app.get('/api/image/user-projects',validateToken, (req, res) => {
+app.get('/api/image/user-projects',validateToken, async (req, res) => {
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
     const sqlInsert1 = "SELECT * FROM projects_user WHERE projects_user.userName="+mysql.escape(userLogged.userName);
     db.query(sqlInsert1,(err,result) =>{
@@ -558,7 +605,7 @@ app.get('/api/image/user-projects',validateToken, (req, res) => {
     })
 })
 
-app.get('/api/image/view-projects/:id', (req, res) => {
+app.get('/api/image/view-projects/:id', async (req, res) => {
     const userId = req.params.id
     const sqlClientRequest = "SELECT * FROM user_info ui, projects_user pu WHERE ui.id="+mysql.escape(userId)+" AND ui.email = pu.userName"
     db.query(sqlClientRequest,(err,result) =>{
@@ -616,7 +663,7 @@ app.post('/api/request-work',(req,res)=>{
     })
 });
 
-app.get('/api/user/user-requests',(req,res)=>{
+app.get('/api/user/user-requests',async (req,res)=>{
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
     const sqlGetRequests = "SELECT * FROM work_requests WHERE work_requests.emailWorker="+mysql.escape(userLogged.userName);
     db.query(sqlGetRequests,(err,result) =>{
@@ -778,7 +825,7 @@ app.post('/api/recover-password',async (req,res,next) =>{
     })
 })
 
-app.get('/resetear-password/:id/:token',(req,res,next) =>{
+app.get('/resetear-password/:id/:token', async(req,res,next) =>{
     const { id, token } = req.params
     const sqlGetUser = "SELECT u.userName, u.userPass,ui.id FROM user_credentials u, user_info ui WHERE ui.id ="+mysql.escape(id)+" AND ui.email = u.userName";
     db.query(sqlGetUser,(err,result) =>{
@@ -800,7 +847,6 @@ app.get('/resetear-password/:id/:token',(req,res,next) =>{
     })
 })
 
-
 function generateAccessToken(data){
     return jwt.sign(data,process.env.SECRET, {expiresIn: '60m'});
 }
@@ -819,6 +865,6 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(3001,()=>{
-    console.log("escuchando en el puerto 3001");
+app.listen(443,()=>{
+    console.log("escuchando en el puerto 443");
 });
