@@ -1,4 +1,6 @@
 const express = require('express')
+const bcrypt = require("bcryptjs")
+const rondasDeSal = 10;
 const fs = require('fs')
 const util = require('util')
 const unlinkFile = util.promisify(fs.unlink)
@@ -57,33 +59,35 @@ const uploadEspeciality = multer({
     storage: diskstorageEspeciality
 })
 
-app.post('/api/create-user',(req,res)=>{
+app.post('/api/create-user',async (req,res)=>{
+
+    const date = new Date()
+    const dateRegister = date.toLocaleDateString()
+
     const name = req.body.name;
-    const lastname = req.body.lastname;
+    const lastname = (req.body.lastname === undefined || req.body.lastname === null) ? "" : req.body.lastname;
     const rut = req.body.rut;
-    const bornDate = req.body.bornDate;
+    const bornDate = (req.body.bornDate === undefined || req.body.bornDate === null) ? "" : req.body.bornDate;
     const phone = req.body.phone;
     const email = req.body.email;
     const region = req.body.region;
     const city = req.body.city;
     const comunne = req.body.comunne;
-    const area = req.body.area;
+    const area = (req.body.area === undefined || req.body.area === null) ? "" : req.body.area;
     const role = (req.body.role === undefined || req.body.role === null) ? "" : req.body.role;
     const yearsExperience = req.body.yearsExperience;
     const resume = (req.body.resume === undefined || req.body.resume === null) ? "" : req.body.resume;
     const pass = (req.body.pass === undefined || req.body.pass === null) ? "" : req.body.pass;
-    const agreeconditions = req.body.agreeconditions;
-    const type = "independiente";
+    const economicActivity = (req.body.economicActivity === undefined || req.body.economicActivity === null) ? "" : (req.body.economicActivity).charAt(0).toUpperCase() + (req.body.economicActivity).slice(1).toLowerCase();
+    const agreeconditions = true;
+    const type = parseInt(req.body.type,10);
 
-    const sqlInsert1 = "INSERT INTO user_info(rutUser,nameUser,lastnamesUser,bornDate,cellphone,email,regionUser,cityUser,communeUser,workareaUser,chargeUser,experienceYears,workResume,agreeconditions,?)" + 
-    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    const sqlInsert2 = "INSERT INTO user_credentials(userName, userPass,accountType)" + 
-    "VALUES(?,?,?)";
-    db.query(sqlInsert1,[rut,name,lastname,bornDate,phone,email,region,city,comunne,area,role,yearsExperience,resume,agreeconditions,type],(err,result)=>{
-        if(err){
-            res.status(500).send({ error: 'Algo falló!' });
-        }else{
-            db.query(sqlInsert2,[email,pass,type],(err,result)=>{
+    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
+    bcrypt.hash(pass, rondasDeSal, (err, palabraSecretaEncriptada) => {
+        if (err) {
+            res.status(500).send({ error: 'Error hasheando' });
+        } else {
+            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'pyme',type],(err,result)=>{
                 if(err){
                     res.status(500).send({ error: 'Algo falló!' });
                 }else{
@@ -91,59 +95,31 @@ app.post('/api/create-user',(req,res)=>{
                 }
             })
         }
-    })
+    });
+    
 });
 
-app.post('/api/create-user-pyme',(req,res)=>{
-
-    const razonSocial = req.body.name;
-    let economicActivity = req.body.economicActivity;
-    economicActivity = economicActivity.charAt(0).toUpperCase() + economicActivity.slice(1).toLowerCase()
-    const rut = req.body.rut;
-    const phone = req.body.phone;
-    const email = req.body.email;
-    const region = req.body.region;
-    const city = req.body.city;
-    const comunne = req.body.comunne;
-    const yearsExperience = req.body.yearsExperience;
-    const resume = req.body.resume;
-    const pass = req.body.pass;
-    const agreeconditions = req.body.agreeconditions;
-    const type = "pyme";
-
-    const sqlInsert1 = "INSERT INTO user_pyme(rutUser,razonSocial,economicActivity,cellphone,email,regionUser,cityUser,communeUser,experienceYears,workResume,agreeconditions,accountType)" + 
-    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
-    const sqlInsert2 = "INSERT INTO user_credentials(userName, userPass,accountType)" + 
-    "VALUES(?,?,?)";
-    db.query(sqlInsert1,[rut,razonSocial,economicActivity,phone,email,region,city,comunne,yearsExperience,resume,agreeconditions,type],(err,result)=>{
-        if(err){
-            res.status(500).send({ error: 'Algo falló!' });
-        }else{
-            db.query(sqlInsert2,[email,pass,type],(err,result)=>{
-                if(err){
-                    res.status(500).send({ error: 'Algo falló!' });
-                }else{
-                    res.send(result);
-                }
-            })
-        }
-    })
-});
 
 app.post('/api/login', (req,res)=>{
     const user = req.body.userName;
     const pass = req.body.userPass;
-    const sqlGetUserCredentials = "SELECT u.userName, u.userPass, u.accountType FROM user_credentials u WHERE u.userName = "+mysql.escape(user)+ "AND u.userPass ="+mysql.escape(pass);
-    db.query(sqlGetUserCredentials,(err,result) =>{
+    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, E.employedClass FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
+    db.query(sqlGetUserCredentials, async (err,result) =>{
         if(result.length === 0){
             res.status(403).send({ error: 'Error o contraseñas incorrectos' });
         }else{
-            const accessToken = generateAccessToken(req.body);
-            res.header('authorization', accessToken).json({
-                message: 'User authenticated',
-                accessToken: accessToken,
-                userType: result[0].accountType
-            })
+            const passHashed = result[0].userPass;
+            const palabraSecretaValida = await bcrypt.compare(pass, passHashed);
+            if(palabraSecretaValida){
+                const accessToken = generateAccessToken(req.body);
+                res.header('authorization', accessToken).json({
+                    message: 'User authenticated',
+                    accessToken: accessToken,
+                    userType: result[0].employedClass
+                })
+            }else{
+                res.status(403).send({ error: 'Error o contraseñas incorrectos' });
+            }
         }
     })
 });
@@ -190,7 +166,7 @@ app.get('/api/localidades', async(req,res)=>{
 
 app.get('/api/usuarios', async (req,res)=>{
     res.header("Access-Control-Allow-Origin", "*");
-    const sqlGetUsers = "SELECT * FROM user_info"
+    const sqlGetUsers = "CALL SP_GET_EMPLOYEDS()"
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -202,7 +178,7 @@ app.get('/api/usuarios', async (req,res)=>{
 
 app.get('/api/pymes', async (req,res)=>{
     res.header("Access-Control-Allow-Origin", "*");
-    const sqlGetUsers = "SELECT * FROM user_pyme"
+    const sqlGetUsers = "CALL SP_GET_PYMES()"
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -227,7 +203,7 @@ app.get('/api/user-profile/:key', (req,res)=>{
 
 app.get('/api/view/profile/:key', (req,res)=>{
     const userId = req.params.key
-    const sqlGetUsers = "SELECT * FROM user_info WHERE user_info.id="+mysql.escape(userId)
+    const sqlGetUsers = "SELECT * FROM Employed E, Independent I WHERE E.idEmployed="+mysql.escape(userId)+"AND E.idEmployed = I.idEmployedIndp"
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -239,7 +215,7 @@ app.get('/api/view/profile/:key', (req,res)=>{
 
 app.get('/api/view/profile-pyme/:key', (req,res)=>{
     const userId = req.params.key
-    const sqlGetUsers = "SELECT * FROM user_pyme WHERE user_pyme.iduser_pyme="+mysql.escape(userId)
+    const sqlGetUsers = "SELECT * FROM Employed E, PYME P WHERE E.idEmployed="+mysql.escape(userId)+"AND E.idEmployed = P.idEmployedPyme"
     db.query(sqlGetUsers,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -250,8 +226,8 @@ app.get('/api/view/profile-pyme/:key', (req,res)=>{
 });
 
 app.post('/api/user-info', validateToken, (req,res)=>{
-    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());;
-    const sqlGetUser = "SELECT * FROM user_info u WHERE u.email ="+mysql.escape(userLogged.userName);
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const sqlGetUser = "SELECT * FROM Employed E, Independent I WHERE I.idEmployedIndp = E.idEmployed AND E.emailEmployed ="+mysql.escape(userLogged.userName);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -262,8 +238,8 @@ app.post('/api/user-info', validateToken, (req,res)=>{
 });
 
 app.post('/api/user-info-pyme', validateToken, (req,res)=>{
-    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());;
-    const sqlGetUser = "SELECT * FROM user_pyme u WHERE u.email ="+mysql.escape(userLogged.userName);
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const sqlGetUser = "SELECT * FROM Employed E, PYME P WHERE P.idEmployedPyme = E.idEmployed AND E.emailEmployed ="+mysql.escape(userLogged.userName);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -282,41 +258,13 @@ app.put('/api/update-user', validateToken,(req,res)=>{
     website = (dataToUpdate[1].value === undefined || dataToUpdate[1].value === null) ? "" : dataToUpdate[1].value;
     instagram = (dataToUpdate[2].value === undefined || dataToUpdate[2].value === null) ? "" : dataToUpdate[2].value;
     facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
-    twitter = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
-    cell = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
-    exp = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "0" : dataToUpdate[6].value;
-    colorInput = (dataToUpdate[7].value === undefined || dataToUpdate[7].value === null) ? "" : dataToUpdate[7].value;
+    cell = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
+    exp = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "0" : dataToUpdate[5].value;
+    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
 
-    const sqlUpdate1 = "UPDATE user_info SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
-    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
-    +",userColor="+mysql.escape(colorInput)+",experienceYears="+mysql.escape(exp)+"WHERE user_info.email="+mysql.escape(userLogged.userName);
-
-    db.query(sqlUpdate1,(err,result) =>{
-        if(err){
-            res.status(500).send('Problema actualizando datos')
-        }else{
-            res.send(result);
-        }
-    })
-});
-
-app.put('/api/update-pyme', validateToken, async (req,res)=>{
-
-    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
-
-    const dataToUpdate  = req.body.newArrayValues
-
-    website = (dataToUpdate[1].value === undefined || dataToUpdate[1].value === null) ? "" : dataToUpdate[1].value;
-    instagram = (dataToUpdate[2].value === undefined || dataToUpdate[2].value === null) ? "" : dataToUpdate[2].value;
-    facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
-    twitter = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
-    cell = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "" : dataToUpdate[5].value;
-    exp = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "0" : dataToUpdate[6].value;
-    colorInput = (dataToUpdate[7].value === undefined || dataToUpdate[7].value === null) ? "" : dataToUpdate[7].value;
-
-    const sqlUpdate1 = "UPDATE user_pyme SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
-    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",twitterSite="+mysql.escape(twitter)
-    +",userColor="+mysql.escape(colorInput)+",experienceYears="+mysql.escape(exp)+"WHERE user_pyme.email="+mysql.escape(userLogged.userName);
+    const sqlUpdate1 = "UPDATE Employed SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
+    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",colorEmployed="+mysql.escape(colorInput)
+    +",experienceYears="+mysql.escape(exp)+"WHERE Employed.emailEmployed="+mysql.escape(userLogged.userName);
 
     db.query(sqlUpdate1,(err,result) =>{
         if(err){
@@ -326,6 +274,7 @@ app.put('/api/update-pyme', validateToken, async (req,res)=>{
         }
     })
 });
+
 
 app.put('/api/images',upload.single('formFile'),async (req,res)=>{
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
@@ -333,23 +282,7 @@ app.put('/api/images',upload.single('formFile'),async (req,res)=>{
     const result = await uploadFile(file)
     await unlinkFile(file.path)
     const imgSrc = {imagePath: `/api/images/${result.Key}`}
-    const sqlInsert1 = "UPDATE user_info SET userPhoto="+mysql.escape(result.Key)+"WHERE user_info.email="+mysql.escape(userLogged.userName);
-    db.query(sqlInsert1,(err,result) =>{
-        if(err){
-            res.status(500).send('Problema subiendo Foto')
-        }else{
-            res.send(imgSrc);
-        }
-    })
-});
-
-app.put('/api/images-pyme',upload.single('formFile'),async (req,res)=>{
-    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
-    const file = req.file
-    const result = await uploadFile(file)
-    await unlinkFile(file.path)
-    const imgSrc = {imagePath: `/api/images/${result.Key}`}
-    const sqlInsert1 = "UPDATE user_pyme SET userPhoto="+mysql.escape(result.Key)+"WHERE user_pyme.email="+mysql.escape(userLogged.userName);
+    const sqlInsert1 = "UPDATE Employed SET photoEmployed="+mysql.escape(result.Key)+"WHERE Employed.emailEmployed="+mysql.escape(userLogged.userName);
     db.query(sqlInsert1,(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo Foto')
@@ -374,13 +307,13 @@ app.delete('/api/images/delete/:key', async (req, res) => {
     console.log(req.params)
     const key = req.params.key
     await deleteFileStream(key).promise()
-    res.send('previous photo deleted successfully')
+    res.send('Foto previa borrada satisfactoriamente!')
 })
 
 app.delete('/api/image/delete-project:key',(req, res) => {
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
     const idphoto = req.params.key
-    const sqlDelete = "DELETE FROM projects_user WHERE projects_user.userName="+mysql.escape(userLogged.userName)+"AND projects_user.id_img="+mysql.escape(idphoto);
+    const sqlDelete = "DELETE FROM ProjectsEmployed WHERE ProjectsEmployed.userName="+mysql.escape(userLogged.userName)+"AND ProjectsEmployed.id_img="+mysql.escape(idphoto);
     db.query(sqlDelete,(err,result) =>{
         if(err){
             res.status(500).send('Problema eliminando Foto')
@@ -390,10 +323,9 @@ app.delete('/api/image/delete-project:key',(req, res) => {
     })
 })
 
-app.delete('/api/delete-especiality:key',(req, res) => {
-    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
+app.delete('/api/delete-especiality:key',validateToken,(req, res) => {
     const idespeciality = req.params.key
-    const sqlDelete = "DELETE FROM workerEspeciality WHERE workerEspeciality.EmailWorkerEspeciality="+mysql.escape(userLogged.userName)+"AND workerEspeciality.idworkerEspeciality="+mysql.escape(idespeciality);
+    const sqlDelete = "DELETE FROM EmployedEspeciality WHERE EmployedEspeciality.idworkerEspeciality="+mysql.escape(idespeciality);
     db.query(sqlDelete,(err,result) =>{
         if(err){
             res.status(500).send('Problema eliminando Foto')
@@ -403,7 +335,8 @@ app.delete('/api/delete-especiality:key',(req, res) => {
     })
 })
 
-app.post('/api/image/upload-project',uploadproject.single('photofile'),async (req,res)=>{
+app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),async (req,res)=>{
+    const idWorker = parseInt(req.params.key,10)
     const body = JSON.parse(req.body.params)
     const token = req.body.token
     const userLogged = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
@@ -418,14 +351,14 @@ app.post('/api/image/upload-project',uploadproject.single('photofile'),async (re
     const filetype = file.mimetype
     const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + file.filename))
     await unlinkFile(file.path)
-    const sqlLimit = "SELECT * FROM projects_user WHERE projects_user.userName="+mysql.escape(userLogged.userName)
-    const sqlInsert1 = "INSERT INTO projects_user(clientName,imageName,userName,workDate,imageClient,imageType,workResume,clientCell,clientEmail) VALUES(?,?,?,?,?,?,?,?,?)"
+    const sqlLimit = "SELECT * FROM ProjectsEmployed WHERE ProjectsEmployed.userName="+mysql.escape(userLogged.userName)
+    const sqlInsert1 = "INSERT INTO ProjectsEmployed(clientName,imageName,userName,workDate,imageClient,imageType,workResume,clientCell,clientEmail,idEmployedProjects) VALUES(?,?,?,?,?,?,?,?,?,?)"
     db.query(sqlLimit,(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo Foto')
         }else{
             if(result.length <= 8){
-                db.query(sqlInsert1,[name, originalname, username, workdate, imageClient , filetype, workresume,clientcell,clientemail],(err,result) =>{
+                db.query(sqlInsert1,[name, originalname, username, workdate, imageClient , filetype, workresume,clientcell,clientemail,idWorker],(err,result) =>{
                     if(err){
                         res.status(500).send('Problema subiendo Foto')
                     }else{
@@ -446,12 +379,12 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     const dateComment = date.toLocaleDateString()
     const body = JSON.parse(req.body.params)
     let arrayFiles = []
-    const workerName = body[0]
-    const workerLastName = body[1]
-    const clientEmail = body[2]
-    const workerComment = body[3]
-    const workerEmail = body[4]
+    const clientName = body[0]
+    const clientLastName = body[1]
+    const clientmail = body[2]
+    const clientComment = body[3]
     const aptitudRating = body[5]
+    const idEmployed = parseInt(body[6].employed,10)
 
     for(let i = 0; i < (req.files).length; i++){
         let filesComment = {
@@ -463,8 +396,8 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     }
         
     if((req.files).length <= 4){
-        const sqlRating = "INSERT INTO user_ratings(workerName,workerLastName,workerComment,evidencesComment,aptitudRating,workerEmail,clientEmail,dateComment) VALUES(?,?,?,?,?,?,?,?)"
-        db.query(sqlRating,[workerName,workerLastName,workerComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),workerEmail,clientEmail,dateComment],(err,result) =>{
+        const sqlRating = "CALL SP_SEND_RATINGEMPLOYED(?,?,?,?,?,?,?,?,@p_return_code)"
+        db.query(sqlRating,[idEmployed,clientName,clientLastName,clientComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),clientmail,dateComment],(err,result) =>{
             if(err){
                 res.status(500).send('Problema subiendo evaluación')
             }else{
@@ -474,10 +407,11 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     }
 });
 
-app.post('/api/upload/speciality',uploadEspeciality.array('specialityFormFile',10),async (req,res)=>{
+app.post('/api/upload/speciality/:key',uploadEspeciality.array('specialityFormFile',10),async (req,res)=>{
 
     const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
     const arrayEspecialityDescript = JSON.parse(req.body.params)
+    const idWorker = parseInt(req.params.key)
     let arrayFilesEsp = []
 
     let filesEspeciality = {
@@ -487,8 +421,8 @@ app.post('/api/upload/speciality',uploadEspeciality.array('specialityFormFile',1
     arrayFilesEsp.push(filesEspeciality)
     await unlinkFile((req.files[0]).path)
 
-    const sqlEspeciality = "INSERT INTO workerEspeciality(especialityDescript,especialityDoc,EmailWorkerEspeciality,fileType) VALUES(?,?,?,?)"
-    db.query(sqlEspeciality,[JSON.stringify(arrayEspecialityDescript),JSON.stringify(arrayFilesEsp),userLogged.userName,req.files[0].mimetype],(err,result) =>{
+    const sqlEspeciality = "INSERT INTO EmployedEspeciality(especialityDescript,especialityDoc,EmailWorkerEspeciality,fileType,idEmployedEspeciality) VALUES(?,?,?,?,?)"
+    db.query(sqlEspeciality,[JSON.stringify(arrayEspecialityDescript),JSON.stringify(arrayFilesEsp),userLogged.userName,req.files[0].mimetype,idWorker],(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo especialidad')
         }else{
@@ -497,69 +431,10 @@ app.post('/api/upload/speciality',uploadEspeciality.array('specialityFormFile',1
     })
 });
 
-app.get('/api/worker/evaluations/:key',async (req, res) => {
-    const userId = req.params.key
-    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail, ur.dateComment FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
-    db.query(sqlGetEvaluations,(err,result) =>{
-        if(err){
-            res.status(500).send('Problema obteniendo evaluaciones')
-        }else{
-            result.map(image => {
-                let comment = JSON.parse(image.evidencesComment)
-                let commentToString = ""                    
-                comment.forEach(element => {
-                    commentToString = Buffer.from(element.filename)
-                    fs.writeFileSync(path.join(__dirname, './projects/commentsdownload/' + element.originalname),commentToString)
-                });
-            })
-            res.send(result)
-        }
-    })
-})
-
-app.get('/api/worker/evaluations-pyme/:key',async (req, res) => {
-    const userId = req.params.key
-    const sqlGetEvaluations = "SELECT ur.workerName,ur.workerLastName,ur.workerComment,ur.evidencesComment,ur.aptitudRating,ur.workerEmail,ur.clientEmail, ur.dateComment FROM user_ratings ur, user_pyme up WHERE up.email=ur.workerEmail AND up.iduser_pyme="+mysql.escape(userId);
-    db.query(sqlGetEvaluations,(err,result) =>{
-        if(err){
-            res.status(500).send('Problema obteniendo evaluaciones')
-        }else{
-            result.map(image => {
-                let comment = JSON.parse(image.evidencesComment)
-                let commentToString = ""                    
-                comment.forEach(element => {
-                    commentToString = Buffer.from(element.filename)
-                    fs.writeFileSync(path.join(__dirname, './projects/commentsdownload/' + element.originalname),commentToString)
-                });
-            })
-            res.send(result)
-        }
-    })
-})
 
 app.get('/api/download/speciality/:key', async (req, res) => {
     const userId = req.params.key
-    const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM workerEspeciality we, user_info ui  WHERE ui.email=we.EmailWorkerEspeciality AND ui.id="+mysql.escape(userId);
-    db.query(sqlGetEspecilities,(err,result) =>{
-        if(err){
-            res.status(500).send('Problema obteniendo especialidades')
-        }else{
-            result.map(image => {
-                let comment = JSON.parse(image.especialityDoc)
-                let commentToString = ""                    
-                comment.forEach(element => {
-                    commentToString = Buffer.from(element.filename)
-                    fs.writeFileSync(path.join(__dirname, './projects/especialitydownload/' + element.originalname),commentToString)
-                });
-            })
-            res.send(result)
-        }
-    })
-})
-
-app.get('/api/download/speciality-pyme/:key', async (req, res) => {
-    const userId = req.params.key
-    const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM workerEspeciality we, user_pyme up  WHERE up.email=we.EmailWorkerEspeciality AND up.iduser_pyme="+mysql.escape(userId);
+    const sqlGetEspecilities = "SELECT we.idworkerEspeciality, we.fileType, we.especialityDescript, we.especialityDoc FROM EmployedEspeciality we, Employed up  WHERE up.idEmployed = we.idEmployedEspeciality AND up.idEmployed="+mysql.escape(userId);
     db.query(sqlGetEspecilities,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo especialidades')
@@ -579,7 +454,7 @@ app.get('/api/download/speciality-pyme/:key', async (req, res) => {
 
 app.get('/api/worker/ratings/:key',async (req, res) => {
     const userId = req.params.key
-    const sqlGetRatings = "SELECT ur.aptitudRating FROM user_ratings ur, user_info ui WHERE ui.email=ur.workerEmail AND ui.id="+mysql.escape(userId);
+    const sqlGetRatings = "SELECT C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.evidencesComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo evaluaciones')
@@ -591,7 +466,7 @@ app.get('/api/worker/ratings/:key',async (req, res) => {
 
 app.get('/api/image/user-projects',validateToken, async (req, res) => {
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
-    const sqlInsert1 = "SELECT * FROM projects_user WHERE projects_user.userName="+mysql.escape(userLogged.userName);
+    const sqlInsert1 = "SELECT * FROM ProjectsEmployed P, Employed E WHERE P.idEmployedProjects = E.idEmployed AND P.userName="+mysql.escape(userLogged.userName);
     db.query(sqlInsert1,(err,result) =>{
         if(err){
             console.log(err);
@@ -607,7 +482,7 @@ app.get('/api/image/user-projects',validateToken, async (req, res) => {
 
 app.get('/api/image/view-projects/:id', async (req, res) => {
     const userId = req.params.id
-    const sqlClientRequest = "SELECT * FROM user_info ui, projects_user pu WHERE ui.id="+mysql.escape(userId)+" AND ui.email = pu.userName"
+    const sqlClientRequest = "SELECT * FROM Employed E, ProjectsEmployed P WHERE P.idEmployedProjects = E.idEmployed AND P.idEmployedProjects="+mysql.escape(userId)
     db.query(sqlClientRequest,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo tus proyectos')
@@ -622,13 +497,13 @@ app.get('/api/image/view-projects/:id', async (req, res) => {
 
 app.post('/api/request-work',(req,res)=>{
 
-    let calle = '';
-    let pasaje = '';
-    let NumeroCasa = '';
+    let calle = null;
+    let pasaje = null;
+    let NumeroCasa = null;
 
-    let dptoDirec = '';
-    let NumeroPiso = '';
-    let NumeroDepto = '';
+    let dptoDirec = null;
+    let NumeroPiso = null;
+    let NumeroDepto = null;
 
     const nombre = req.body[0];
     const apellidos = req.body[1];
@@ -647,14 +522,12 @@ app.post('/api/request-work',(req,res)=>{
 
     const comuna = req.body[11];
     const descripcionTrabajo = req.body[12];
-    const emailWorker = req.body[13];
-    const rutWorker = req.body[14];
     const estado = 'acordar'
+    const id = parseInt(req.body[16],10)
 
-    const sqlInsertRequest = "INSERT INTO work_requests(nombre,apellidos,rut,email,celular,calle,pasaje,NumeroCasa,dptoDirec,NumeroPiso,NumeroDepto,comuna,descripcionTrabajo,emailWorker,rutWorker,estado)" + 
-    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsertRequest = "CALL SP_SEND_WORKREQUESTS(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
 
-    db.query(sqlInsertRequest,[nombre,apellidos,rut,email,celular,calle,pasaje,NumeroCasa,dptoDirec,NumeroPiso,NumeroDepto,comuna,descripcionTrabajo,emailWorker,rutWorker,estado],(err,result)=>{
+    db.query(sqlInsertRequest,[id,nombre,apellidos,rut,email,celular,calle,pasaje,NumeroCasa,dptoDirec,NumeroPiso,NumeroDepto,comuna,descripcionTrabajo,estado],(err,result)=>{
         if(err){
             res.status(500).send({ error: 'No se pudo enviar la solicitud!' });
         }else{
@@ -663,9 +536,9 @@ app.post('/api/request-work',(req,res)=>{
     })
 });
 
-app.get('/api/user/user-requests',async (req,res)=>{
-    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
-    const sqlGetRequests = "SELECT * FROM work_requests WHERE work_requests.emailWorker="+mysql.escape(userLogged.userName);
+app.get('/api/user/user-requests/:key',async (req,res)=>{
+    const idWorker = parseInt(req.params.key,10)
+    const sqlGetRequests = "SELECT * FROM WorkRequests W, Employed E, Customer C WHERE W.idEmployedRequests = E.idEmployed AND C.idCustomer = W.idCustomerRequests AND W.idEmployedRequests="+mysql.escape(idWorker);
     db.query(sqlGetRequests,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -724,7 +597,7 @@ app.put('/api/update/agreement/',async (req,res)=>{
             requestInfo: req.body.requestInfo
         }
     }
-    const sqlUpdateRequest = "UPDATE work_requests SET estado="+mysql.escape(estado)+"WHERE work_requests.idRequest="+mysql.escape(idRequest);
+    const sqlUpdateRequest = "UPDATE WorkRequests SET estado="+mysql.escape(estado)+"WHERE WorkRequests.idRequest="+mysql.escape(idRequest);
     db.query(sqlUpdateRequest,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -743,7 +616,7 @@ app.put('/api/user/request-confirm/',async (req,res)=>{
     const idRequest = parseInt(req.body.idRequest,10);
     const startDate = req.body.startDate;
 
-    const sqlUpdateRequest = "UPDATE work_requests SET estado="+mysql.escape(estado)+", startDate="+mysql.escape(startDate)+"WHERE work_requests.idRequest="+mysql.escape(idRequest);
+    const sqlUpdateRequest = "UPDATE WorkRequests SET estado="+mysql.escape(estado)+", startDate="+mysql.escape(startDate)+"WHERE WorkRequests.idRequest="+mysql.escape(idRequest);
     db.query(sqlUpdateRequest,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -758,7 +631,7 @@ app.put('/api/user/request-reject/',async (req,res)=>{
     const estado = req.body.estado;
     const idRequest = parseInt(req.body.idRequest,10);
 
-    const sqlUpdateRequest = "UPDATE work_requests SET estado="+mysql.escape(estado)+"WHERE work_requests.idRequest="+mysql.escape(idRequest);
+    const sqlUpdateRequest = "UPDATE WorkRequests SET estado="+mysql.escape(estado)+"WHERE WorkRequests.idRequest="+mysql.escape(idRequest);
     db.query(sqlUpdateRequest,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -773,7 +646,7 @@ app.put('/api/worker/update-rating/:key',async (req,res)=>{
     const idWorker = req.params.key;
     const rank = req.body.rankingTotal;
 
-    const sqlUpdateRating = "UPDATE user_info SET ranking="+mysql.escape(rank)+"WHERE user_info.id="+mysql.escape(idWorker);
+    const sqlUpdateRating = "UPDATE Employed SET rankingEmployed="+mysql.escape(rank)+"WHERE Employed.idEmployed="+mysql.escape(idWorker);
     db.query(sqlUpdateRating,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -786,7 +659,7 @@ app.put('/api/worker/update-rating/:key',async (req,res)=>{
 app.put('/api/forgot-password', (req,res,next) =>{
     const password = req.body.password
     const user = req.body.email
-    const sqlUpdatePassword = "UPDATE user_credentials SET userPass="+mysql.escape(password)+"WHERE user_credentials.userName="+mysql.escape(user);
+    const sqlUpdatePassword = "UPDATE EmployedCredentials SET userPass="+mysql.escape(password)+"WHERE EmployedCredentials.userName="+mysql.escape(user);
     db.query(sqlUpdatePassword,(err,result) =>{
         if(err){
             res.status(500).send(err);
@@ -799,7 +672,7 @@ app.put('/api/forgot-password', (req,res,next) =>{
 
 app.post('/api/recover-password',async (req,res,next) =>{
     const userToRecover = req.body.mailValue
-    const sqlGetUser = "SELECT u.userName, u.userPass,ui.id FROM user_credentials u, user_info ui WHERE u.userName ="+mysql.escape(userToRecover)+" AND ui.email = u.userName";
+    const sqlGetUser = "SELECT EC.userName, EC.userPass, E.idEmployed FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.userName ="+mysql.escape(userToRecover);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -827,7 +700,7 @@ app.post('/api/recover-password',async (req,res,next) =>{
 
 app.get('/resetear-password/:id/:token', async(req,res,next) =>{
     const { id, token } = req.params
-    const sqlGetUser = "SELECT u.userName, u.userPass,ui.id FROM user_credentials u, user_info ui WHERE ui.id ="+mysql.escape(id)+" AND ui.email = u.userName";
+    const sqlGetUser = "SELECT EC.userName, EC.userPass, E.idEmployed FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.idEmployedCredentials ="+mysql.escape(id);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -865,6 +738,6 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(443,()=>{
-    console.log("escuchando en el puerto 443");
+app.listen(3001,()=>{
+    console.log("escuchando en el puerto 3001");
 });
