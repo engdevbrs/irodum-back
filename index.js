@@ -88,10 +88,14 @@ app.post('/api/create-user',async (req,res)=>{
             res.status(500).send({ error: 'Error hasheando' });
         } else {
             db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'pyme',type],(err,result)=>{
-                if(err){
-                    res.status(500).send({ error: 'Algo falló!' });
-                }else{
+                let statusCode = null;
+                if(result.serverStatus === 2 && result.serverStatus !== undefined){
                     res.send(result);
+                }else if(result.length > 0){
+                    statusCode = result[0][0]
+                    if(statusCode.RETURNED_SQLSTATE === '23000'){
+                        res.status(500).send({ error: 'Algo falló!' });
+                    }
                 }
             })
         }
@@ -672,7 +676,7 @@ app.put('/api/forgot-password', (req,res,next) =>{
 
 app.post('/api/recover-password',async (req,res,next) =>{
     const userToRecover = req.body.mailValue
-    const sqlGetUser = "SELECT EC.userName, EC.userPass, E.idEmployed FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.userName ="+mysql.escape(userToRecover);
+    const sqlGetUser = "SELECT EC.userName, EC.userPass, EC.iduser_credentials FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.userName ="+mysql.escape(userToRecover);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -683,10 +687,10 @@ app.post('/api/recover-password',async (req,res,next) =>{
                 const secret = process.env.SECRET + result[0].userPass
                 const payload = {
                     email: result[0].userName,
-                    id: result[0].id
+                    id: result[0].iduser_credentials
                 }
                 const token = jwt.sign(payload,secret, { expiresIn: '15m' })
-                const link = `http://d2tdlyl8u1ln8a.cloudfront.net/resetear-password/${result[0].id}/${token}`
+                const link = `http://localhost:3000/resetear-password/${result[0].iduser_credentials}/${token}`
                 const objectResetPass = {
                     mail: result[0].userName,
                     enlace: link
@@ -700,7 +704,7 @@ app.post('/api/recover-password',async (req,res,next) =>{
 
 app.get('/resetear-password/:id/:token', async(req,res,next) =>{
     const { id, token } = req.params
-    const sqlGetUser = "SELECT EC.userName, EC.userPass, E.idEmployed FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.idEmployedCredentials ="+mysql.escape(id);
+    const sqlGetUser = "SELECT EC.userName, EC.userPass, EC.idEmployedCredentials FROM EmployedCredentials EC, Employed ED WHERE ED.idEmployed = EC.idEmployedCredentials AND EC.idEmployedCredentials ="+mysql.escape(id);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
