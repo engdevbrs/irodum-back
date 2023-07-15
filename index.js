@@ -24,7 +24,7 @@ app.use(express.json())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
-const upload = multer({ dest: __dirname +'/images/'})
+const upload = multer({ dest: './images' })
 
 const diskstorage = multer.diskStorage({
     destination: path.join(__dirname, './projects/uploads'),
@@ -742,6 +742,6 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(3001,()=>{
-    console.log("escuchando en el puerto 3001");
+app.listen(8080,()=>{
+    console.log("escuchando en el puerto 8080");
 });
