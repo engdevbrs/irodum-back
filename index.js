@@ -24,7 +24,7 @@ app.use(express.json())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
-const upload = multer({ dest: './images' })
+const upload = multer({ dest: __dirname +'/images'})
 
 const diskstorage = multer.diskStorage({
     destination: path.join(__dirname, './projects/uploads'),
