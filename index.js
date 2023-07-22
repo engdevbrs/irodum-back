@@ -82,12 +82,12 @@ app.post('/api/create-user',async (req,res)=>{
     const agreeconditions = true;
     const type = parseInt(req.body.type,10);
 
-    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
+    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
     bcrypt.hash(pass, rondasDeSal, (err, palabraSecretaEncriptada) => {
         if (err) {
             res.status(500).send({ error: 'Error hasheando' });
         } else {
-            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'pyme',type],(err,result)=>{
+            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type],(err,result)=>{
                 let statusCode = null;
                 if(result.serverStatus === 2 && result.serverStatus !== undefined){
                     res.send(result);
