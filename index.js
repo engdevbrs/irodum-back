@@ -107,7 +107,7 @@ app.post('/api/create-user',async (req,res)=>{
 app.post('/api/login', (req,res)=>{
     const user = req.body.userName;
     const pass = req.body.userPass;
-    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, E.employedClass FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
+    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, EC.idTypeEmployed FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
     db.query(sqlGetUserCredentials, async (err,result) =>{
         if(result.length === 0){
             res.status(403).send({ error: 'Error o contraseñas incorrectos' });
@@ -119,7 +119,7 @@ app.post('/api/login', (req,res)=>{
                 res.header('authorization', accessToken).json({
                     message: 'User authenticated',
                     accessToken: accessToken,
-                    userType: result[0].employedClass
+                    userType: result[0].idTypeEmployed
                 })
             }else{
                 res.status(403).send({ error: 'Error o contraseñas incorrectos' });
@@ -457,7 +457,7 @@ app.get('/api/download/speciality/:key', async (req, res) => {
 })
 
 app.get('/api/worker/ratings/:key',async (req, res) => {
-    const userId = req.params.key
+    const userId = parseInt(req.params.key,10)
     const sqlGetRatings = "SELECT C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.evidencesComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
         if(err){
@@ -566,7 +566,7 @@ app.post('/api/requestEmail',async (req,res)=>{
         nameClient: req.body[0],
         emailClient: req.body[3],
         message: req.body[12],
-        emailWorker: req.body[13],
+        emailWorker: req.body[17],
         nameWorker: req.body[15]
     }
     const response = await emailer.sendRequestEmail(userObjectRequest)
