@@ -82,12 +82,12 @@ app.post('/api/create-user',async (req,res)=>{
     const agreeconditions = true;
     const type = parseInt(req.body.type,10);
 
-    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
+    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
     bcrypt.hash(pass, rondasDeSal, (err, palabraSecretaEncriptada) => {
         if (err) {
             res.status(500).send({ error: 'Error hasheando' });
         } else {
-            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'pyme',type],(err,result)=>{
+            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type],(err,result)=>{
                 let statusCode = null;
                 if(result.serverStatus === 2 && result.serverStatus !== undefined){
                     res.send(result);
@@ -107,7 +107,7 @@ app.post('/api/create-user',async (req,res)=>{
 app.post('/api/login', (req,res)=>{
     const user = req.body.userName;
     const pass = req.body.userPass;
-    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, E.employedClass FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
+    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, EC.idTypeEmployed FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
     db.query(sqlGetUserCredentials, async (err,result) =>{
         if(result.length === 0){
             res.status(403).send({ error: 'Error o contraseñas incorrectos' });
@@ -119,7 +119,7 @@ app.post('/api/login', (req,res)=>{
                 res.header('authorization', accessToken).json({
                     message: 'User authenticated',
                     accessToken: accessToken,
-                    userType: result[0].employedClass
+                    userType: result[0].idTypeEmployed
                 })
             }else{
                 res.status(403).send({ error: 'Error o contraseñas incorrectos' });
