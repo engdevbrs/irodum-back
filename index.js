@@ -457,7 +457,7 @@ app.get('/api/download/speciality/:key', async (req, res) => {
 })
 
 app.get('/api/worker/ratings/:key',async (req, res) => {
-    const userId = req.params.key
+    const userId = parseInt(req.params.key,10)
     const sqlGetRatings = "SELECT C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.evidencesComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
         if(err){
@@ -566,7 +566,7 @@ app.post('/api/requestEmail',async (req,res)=>{
         nameClient: req.body[0],
         emailClient: req.body[3],
         message: req.body[12],
-        emailWorker: req.body[13],
+        emailWorker: req.body[17],
         nameWorker: req.body[15]
     }
     const response = await emailer.sendRequestEmail(userObjectRequest)
@@ -650,7 +650,7 @@ app.put('/api/worker/update-rating/:key',async (req,res)=>{
     const idWorker = req.params.key;
     const rank = req.body.rankingTotal;
 
-    const sqlUpdateRating = "UPDATE Employed SET rankingEmployed="+mysql.escape(rank)+"WHERE Employed.idEmployed="+mysql.escape(idWorker);
+    const sqlUpdateRating = "UPDATE Employed SET rankingEmployed="+mysql.escape(rank)+"WHERE Employed.idEmployed="+mysql.escape(parseInt(idWorker,10));
     db.query(sqlUpdateRating,(err,result) =>{
         if(err){
             res.status(500).send(err);

@@ -268,7 +268,6 @@ const sendRequestEmail = async (userrequest) =>{
   let info = await transporter.sendMail({
       from: '"Solicitud recibida" <soporte@irodum.com>', // sender address
       to: `${userrequest.emailWorker}`, // list of receivers
-      cc: `${userrequest.emailClient}`,
       subject: `Buen dia ${userrequest.nameWorker}, ${userrequest.nameClient} le ha enviado una solicitud de trabajo`, // Subject line
       html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
       <html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" style="font-family:arial, 'helvetica neue', helvetica, sans-serif">
