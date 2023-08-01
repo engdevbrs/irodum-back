@@ -456,13 +456,19 @@ app.get('/api/download/speciality/:key', async (req, res) => {
     })
 })
 
-app.get('/api/worker/ratings/:key',async (req, res) => {
+app.get('/api/worker/ratings/:key',(req, res) => {
     const userId = parseInt(req.params.key,10)
     const sqlGetRatings = "SELECT C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.evidencesComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo evaluaciones')
         }else{
+            result.map(image => {
+                let element = JSON.parse(image.evidencesComment)
+                element.forEach(value => {
+                    fs.writeFileSync(path.join(__dirname,'./projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
+                });
+            })
             res.send(result)
         }
     })
@@ -484,7 +490,7 @@ app.get('/api/image/user-projects',validateToken, async (req, res) => {
     })
 })
 
-app.get('/api/image/view-projects/:id', async (req, res) => {
+app.get('/api/image/view-projects/:id', (req, res) => {
     const userId = req.params.id
     const sqlClientRequest = "SELECT * FROM Employed E, ProjectsEmployed P WHERE P.idEmployedProjects = E.idEmployed AND P.idEmployedProjects="+mysql.escape(userId)
     db.query(sqlClientRequest,(err,result) =>{
