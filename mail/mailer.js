@@ -258,7 +258,7 @@ const sendWelcomeEmail = async (user) =>{
         attachments: [
             {   // utf-8 string as an attachment
                 filename: 'TérminosyCondiciones.pdf',
-                contents: fs.createReadStream(path.join(__dirname, './mail/ + TérminosyCondiciones.pdf'))
+                contents: fs.createReadStream(path.join(__dirname, './mail/TérminosyCondiciones.pdf'))
             }
         ]
     });
