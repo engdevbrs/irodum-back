@@ -251,12 +251,12 @@ const sendWelcomeEmail = async (user) =>{
         to: `${user.email}`, // list of receivers
         subject: `Hola ${user.name} Bienvenido a IRODUM.COM`, // Subject line
         html: template, // html body
-        attachments: [
-            {   // utf-8 string as an attachment
-                filename: 'TérminosyCondiciones.pdf',
-                contents: fs.createReadStream('./mail/TérminosyCondiciones.pdf')
-            }
-        ]
+        // attachments: [
+        //     {   // utf-8 string as an attachment
+        //         filename: 'TérminosyCondiciones.pdf',
+        //         contents: fs.createReadStream('./mail/TérminosyCondiciones.pdf')
+        //     }
+        // ]
     });
     return info
 }
