@@ -2,7 +2,7 @@ const nodemailer = require("nodemailer");
 const express = require('express')
 const app = express()
 const path = require('path')
-app.use(express.static(path.join(__dirname,'./mail/')))
+app.use(express.static(path.join(__dirname,'./mail')))
 const fs = require('fs')
 const dotenv = require('dotenv');
 dotenv.config({path: './env/.env'})
