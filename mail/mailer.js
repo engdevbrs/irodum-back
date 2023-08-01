@@ -1,4 +1,7 @@
 const nodemailer = require("nodemailer");
+const express = require('express')
+const app = express()
+app.use(express.static(path.join(__dirname,'./mail/')))
 const fs = require('fs')
 const dotenv = require('dotenv');
 dotenv.config({path: './env/.env'})
@@ -251,12 +254,12 @@ const sendWelcomeEmail = async (user) =>{
         to: `${user.email}`, // list of receivers
         subject: `Hola ${user.name} Bienvenido a IRODUM.COM`, // Subject line
         html: template, // html body
-        // attachments: [
-        //     {   // utf-8 string as an attachment
-        //         filename: 'TérminosyCondiciones.pdf',
-        //         contents: fs.createReadStream('./mail/TérminosyCondiciones.pdf')
-        //     }
-        // ]
+        attachments: [
+            {   // utf-8 string as an attachment
+                filename: 'TérminosyCondiciones.pdf',
+                contents: fs.createReadStream(path.join(__dirname, './mail/ + TérminosyCondiciones.pdf'))
+            }
+        ]
     });
     return info
 }
