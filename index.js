@@ -17,6 +17,7 @@ const mysql = require('mysql');
 const multer = require('multer');
 const emailer = require('./mail/mailer')
 app.use(express.static(path.join(__dirname,'./projects/downloads')))
+app.use(express.static(path.join(__dirname,'./projects/commentsdownload')))
 app.use(express.static(path.join(__dirname,'./projects/especialitydownload')))
 app.use(cors())
 app.use(express.json())
