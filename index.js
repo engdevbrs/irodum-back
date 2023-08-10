@@ -402,7 +402,7 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
         const { originalname } = req.files[i];
         const ref = `${Date.now()}-${originalname}`;
         sharp(req.files[i].path)
-            .resize({height: 300})
+            .resize({width: 400})
             .toFile(path.join(__dirname, '/projects/commentsupload/' + ref))
         let filesComment = {
             filename: fs.readFileSync(path.join(__dirname, '/projects/commentsupload/' + ref)),
