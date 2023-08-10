@@ -1,5 +1,6 @@
 const express = require('express')
 const bcrypt = require("bcryptjs")
+const sharp = require('sharp')
 const rondasDeSal = 10;
 const fs = require('fs')
 const util = require('util')
@@ -353,7 +354,13 @@ app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),asyn
     const username = userLogged.userName
     const workdate = body.date
     const filetype = file.mimetype
-    const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + file.filename))
+
+    const ref = `${Date.now()}-${originalname}`;
+    sharp(file.path)
+        .resize({height: 300})
+        .toFile("./projects/uploads/" + ref)
+
+    const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + ref))
     await unlinkFile(file.path)
     const sqlLimit = "SELECT * FROM ProjectsEmployed WHERE ProjectsEmployed.userName="+mysql.escape(userLogged.userName)
     const sqlInsert1 = "INSERT INTO ProjectsEmployed(clientName,imageName,userName,workDate,imageClient,imageType,workResume,clientCell,clientEmail,idEmployedProjects) VALUES(?,?,?,?,?,?,?,?,?,?)"
@@ -389,10 +396,17 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     const clientComment = body[3]
     const aptitudRating = body[5]
     const idEmployed = parseInt(body[6].employed,10)
+    const sumaRating = (aptitudRating.cuidadoso + aptitudRating.honestidad + aptitudRating.precio + aptitudRating.puntualidad + aptitudRating.responsabilidad) / 5;
 
     for(let i = 0; i < (req.files).length; i++){
+        const { originalname } = req.files[i];
+        const ref = `${Date.now()}-${originalname}`;
+        sharp(req.files[i].path)
+            .resize({height: 300})
+            .toFile("./projects/commentsupload/" + ref)
+        //await sharp(req.files[i].Buffer).resize({}).toFile('./projects/commentsupload/')
         let filesComment = {
-            filename: fs.readFileSync(path.join(__dirname, './projects/commentsupload/' + (req.files[i]).filename)),
+            filename: fs.readFileSync(path.join(__dirname, './projects/commentsupload/' + ref)),
             originalname: req.files[i].originalname
         }
         arrayFiles.push(filesComment)
@@ -400,8 +414,8 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
     }
         
     if((req.files).length <= 4){
-        const sqlRating = "CALL SP_SEND_RATINGEMPLOYED(?,?,?,?,?,?,?,?,@p_return_code)"
-        db.query(sqlRating,[idEmployed,clientName,clientLastName,clientComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),clientmail,dateComment],(err,result) =>{
+        const sqlRating = "CALL SP_SEND_RATINGEMPLOYED(?,?,?,?,?,?,?,?,?,@p_return_code)"
+        db.query(sqlRating,[idEmployed,clientName,clientLastName,clientComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),clientmail,dateComment,sumaRating],(err,result) =>{
             if(err){
                 res.status(500).send('Problema subiendo evaluación')
             }else{
@@ -456,19 +470,22 @@ app.get('/api/download/speciality/:key', async (req, res) => {
     })
 })
 
-app.get('/api/worker/ratings/:key',(req, res) => {
+app.get('/api/worker/ratings/:key',async (req, res) => {
     const userId = parseInt(req.params.key,10)
-    const sqlGetRatings = "SELECT C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.evidencesComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
+    const sqlGetRatings = "SELECT R.evidencesComment, E.rankingEmployed, C.customerName, C.lastNameCustomer, C.emailCustomer, R.workerComment, R.aptitudRating, R.dateComment, R.idEmployedRatings, R.idCustomerRatings, R.totalRating FROM RatingsEmployed R, Customer C, Employed E WHERE E.idEmployed = R.idEmployedRatings AND R.idCustomerRatings = C.idCustomer AND R.idEmployedRatings="+mysql.escape(userId);
     db.query(sqlGetRatings,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo evaluaciones')
         }else{
             result.map(image => {
-                let element = JSON.parse(image.evidencesComment)
-                element.forEach(value => {
-                    fs.writeFileSync(path.join(__dirname,'./projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
-                });
+                if(image.evidencesComment.length > 0){
+                    let element = JSON.parse(image.evidencesComment)
+                    element.map(value => {
+                        fs.writeFileSync(path.join(__dirname,'./projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
+                    });
+                }
             })
+            
             res.send(result)
         }
     })
