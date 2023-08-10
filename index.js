@@ -358,9 +358,9 @@ app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),asyn
     const ref = `${Date.now()}-${originalname}`;
     sharp(file.path)
         .resize({height: 300})
-        .toFile("/projects/uploads/" + ref)
+        .toFile('/projects/uploads/' + ref)
 
-    const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + ref))
+    const imageClient = fs.readFileSync(path.join(__dirname, '/projects/uploads/' + ref))
     await unlinkFile(file.path)
     const sqlLimit = "SELECT * FROM ProjectsEmployed WHERE ProjectsEmployed.userName="+mysql.escape(userLogged.userName)
     const sqlInsert1 = "INSERT INTO ProjectsEmployed(clientName,imageName,userName,workDate,imageClient,imageType,workResume,clientCell,clientEmail,idEmployedProjects) VALUES(?,?,?,?,?,?,?,?,?,?)"
