@@ -39,7 +39,7 @@ const uploadproject = multer({
 })
 
 const diskstorageComment = multer.diskStorage({
-    destination: path.join(__dirname, '/projects/commentsupload'),
+    destination: path.join(__dirname, './projects/commentsupload'),
     filename: (req, file, cb) =>{
         cb(null, Date.now() + file.originalname)
     }
