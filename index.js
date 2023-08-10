@@ -17,9 +17,9 @@ dotenv.config({path: './env/.env'})
 const mysql = require('mysql');
 const multer = require('multer');
 const emailer = require('./mail/mailer')
-app.use(express.static(path.join(__dirname,'./projects/downloads')))
-app.use(express.static(path.join(__dirname,'./projects/commentsdownload')))
-app.use(express.static(path.join(__dirname,'./projects/especialitydownload')))
+app.use(express.static(path.join(__dirname,'/projects/downloads')))
+app.use(express.static(path.join(__dirname,'/projects/commentsdownload')))
+app.use(express.static(path.join(__dirname,'/projects/especialitydownload')))
 app.use(cors())
 app.use(express.json())
 app.use(bodyParser.json())
@@ -28,7 +28,7 @@ app.use(bodyParser.urlencoded({ extended: true }))
 const upload = multer({ dest: __dirname +'/images'})
 
 const diskstorage = multer.diskStorage({
-    destination: path.join(__dirname, './projects/uploads'),
+    destination: path.join(__dirname, '/projects/uploads'),
     filename: (req, file, cb) =>{
         cb(null, Date.now() + file.originalname)
     }
@@ -39,7 +39,7 @@ const uploadproject = multer({
 })
 
 const diskstorageComment = multer.diskStorage({
-    destination: path.join(__dirname, './projects/commentsupload'),
+    destination: path.join(__dirname, '/projects/commentsupload'),
     filename: (req, file, cb) =>{
         cb(null, Date.now() + file.originalname)
     }
@@ -50,7 +50,7 @@ const uploadComment = multer({
 })
 
 const diskstorageEspeciality = multer.diskStorage({
-    destination: path.join(__dirname, './projects/especialityUpload'),
+    destination: path.join(__dirname, '/projects/especialityUpload'),
     filename: (req, file, cb) =>{
         cb(null, Date.now() + file.originalname)
     }
@@ -358,7 +358,7 @@ app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),asyn
     const ref = `${Date.now()}-${originalname}`;
     sharp(file.path)
         .resize({height: 300})
-        .toFile("./projects/uploads/" + ref)
+        .toFile("/projects/uploads/" + ref)
 
     const imageClient = fs.readFileSync(path.join(__dirname, './projects/uploads/' + ref))
     await unlinkFile(file.path)
@@ -403,9 +403,9 @@ app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (
         const ref = `${Date.now()}-${originalname}`;
         sharp(req.files[i].path)
             .resize({height: 300})
-            .toFile("./projects/commentsupload/" + ref)
+            .toFile("/projects/commentsupload/" + ref)
         let filesComment = {
-            filename: fs.readFileSync(path.join(__dirname, './projects/commentsupload/' + ref)),
+            filename: fs.readFileSync(path.join(__dirname, '/projects/commentsupload/' + ref)),
             originalname: req.files[i].originalname
         }
         arrayFiles.push(filesComment)
@@ -432,7 +432,7 @@ app.post('/api/upload/speciality/:key',uploadEspeciality.array('specialityFormFi
     let arrayFilesEsp = []
 
     let filesEspeciality = {
-        filename: fs.readFileSync(path.join(__dirname, './projects/especialityUpload/' + (req.files[0]).filename)),
+        filename: fs.readFileSync(path.join(__dirname, '/projects/especialityUpload/' + (req.files[0]).filename)),
         originalname: req.files[0].originalname
     }
     arrayFilesEsp.push(filesEspeciality)
@@ -461,7 +461,7 @@ app.get('/api/download/speciality/:key', async (req, res) => {
                 let commentToString = ""                    
                 comment.forEach(element => {
                     commentToString = Buffer.from(element.filename)
-                    fs.writeFileSync(path.join(__dirname, './projects/especialitydownload/' + element.originalname),commentToString)
+                    fs.writeFileSync(path.join(__dirname, '/projects/especialitydownload/' + element.originalname),commentToString)
                 });
             })
             res.send(result)
@@ -480,7 +480,7 @@ app.get('/api/worker/ratings/:key',async (req, res) => {
                 if(image.evidencesComment.length > 0){
                     let element = JSON.parse(image.evidencesComment)
                     element.map(value => {
-                        fs.writeFileSync(path.join(__dirname,'./projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
+                        fs.writeFileSync(path.join(__dirname,'/projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
                     });
                 }
             })
@@ -499,7 +499,7 @@ app.get('/api/image/user-projects',validateToken, async (req, res) => {
             res.status(500).send('Problema obteniendo tus proyectos')
         }else{
             result.map(image => {
-                fs.writeFileSync(path.join(__dirname, './projects/downloads/' + image.imageName),image.imageClient)
+                fs.writeFileSync(path.join(__dirname, '/projects/downloads/' + image.imageName),image.imageClient)
             })
             res.send(result)
         }
@@ -514,7 +514,7 @@ app.get('/api/image/view-projects/:id', (req, res) => {
             res.status(500).send('Problema obteniendo tus proyectos')
         }else{
             result.map(image => {
-                fs.writeFileSync(path.join(__dirname, './projects/downloads/' + image.imageName),image.imageClient)
+                fs.writeFileSync(path.join(__dirname, '/projects/downloads/' + image.imageName),image.imageClient)
             })
             res.send(result)
         }
