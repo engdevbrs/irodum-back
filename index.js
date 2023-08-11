@@ -688,15 +688,20 @@ app.put('/api/worker/update-rating/:key',async (req,res)=>{
 app.put('/api/forgot-password', (req,res,next) =>{
     const password = req.body.password
     const user = req.body.email
-    const sqlUpdatePassword = "UPDATE EmployedCredentials SET userPass="+mysql.escape(password)+"WHERE EmployedCredentials.userName="+mysql.escape(user);
-    db.query(sqlUpdatePassword,(err,result) =>{
-        if(err){
-            res.status(500).send(err);
-        }else{
-            res.send(result);
+    bcrypt.hash(password, rondasDeSal, (err, palabraSecretaEncriptada) => {
+        if (err) {
+            res.status(500).send({ error: 'Error hasheando' });
+        } else {
+            const sqlUpdatePassword = "UPDATE EmployedCredentials SET userPass="+mysql.escape(palabraSecretaEncriptada)+"WHERE EmployedCredentials.userName="+mysql.escape(user);
+            db.query(sqlUpdatePassword,(err,result) =>{
+                if(err){
+                    res.status(500).send(err);
+                }else{
+                    res.send(result);
+                }
+            })
         }
-    })
-
+    });
 })
 
 app.post('/api/recover-password',async (req,res,next) =>{
