@@ -715,7 +715,7 @@ app.post('/api/recover-password',async (req,res,next) =>{
                     id: result[0].iduser_credentials
                 }
                 const token = jwt.sign(payload,secret, { expiresIn: '15m' })
-                const link = `http://localhost:3000/resetear-password/${result[0].iduser_credentials}/${token}`
+                const link = `http://irodum.com/resetear-password/${result[0].iduser_credentials}/${token}`
                 const objectResetPass = {
                     mail: result[0].userName,
                     enlace: link

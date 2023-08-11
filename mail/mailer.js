@@ -695,8 +695,8 @@ const sendResetPasswordLink = async (objectResetPass) =>{
       <td align="center" class="es-m-p0r es-m-p0l" style="Margin:0;padding-top:20px;padding-bottom:20px;padding-left:40px;padding-right:40px"><p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#333333;font-size:14px">Para continuar con el proceso de recuperación de clave, debe hacer click en el botón <strong>"Recuperar contraseña"</strong> que se encuentra a continuación.</p><p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#333333;font-size:14px"></p></td>
       </tr>
       <tr>
-      <td align="center" style="padding:0;Margin:0;padding-top:10px;padding-bottom:10px"><!--[if mso]><a href="https://www.irodum.com/login" target="_blank" hidden>
-      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" esdevVmlButton href="https://www.irodum.com/login"
+      <td align="center" style="padding:0;Margin:0;padding-top:10px;padding-bottom:10px"><!--[if mso]><a href="http://irodum.com/login" target="_blank" hidden>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" esdevVmlButton href="http://irodum.com/login"
       style="height:44px; v-text-anchor:middle; width:181px" arcsize="14%" stroke="f" fillcolor="#325ea4">
       <w:anchorlock></w:anchorlock>
       <center style='color:#ffffff; font-family:arial, "helvetica neue", helvetica, sans-serif; font-size:18px; font-weight:400; line-height:18px; mso-text-raise:1px'>Iniciar Sesión</center>
