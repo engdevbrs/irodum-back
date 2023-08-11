@@ -20,6 +20,7 @@ const emailer = require('./mail/mailer')
 app.use(express.static(path.join(__dirname,'./projects/downloads')))
 app.use(express.static(path.join(__dirname,'./projects/commentsdownload')))
 app.use(express.static(path.join(__dirname,'./projects/commentsupload')))
+app.use(express.static(path.join(__dirname,'./projects/uploads')))
 app.use(express.static(path.join(__dirname,'./projects/especialitydownload')))
 app.use(express.static(path.join(__dirname,'./projects/especialityupload')))
 app.use(cors())
@@ -358,9 +359,9 @@ app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),asyn
     const filetype = file.mimetype
 
     const ref = `${Date.now()}-${originalname}`;
-    sharp(file.path)
+    await sharp(file.path)
         .resize({height: 300})
-        .toFile('/projects/uploads/' + ref)
+        .toFile(path.join(__dirname, '/projects/uploads/' + ref))
 
     const imageClient = fs.readFileSync(path.join(__dirname, '/projects/uploads/' + ref))
     await unlinkFile(file.path)
