@@ -772,6 +772,6 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(80,()=>{
-    console.log("escuchando en el puerto 80");
+app.listen(8080,()=>{
+    console.log("escuchando en el puerto 8080");
 });
