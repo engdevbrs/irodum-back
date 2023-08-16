@@ -779,11 +779,6 @@ function validateToken(req,res,next){
     })
 }
 
-const sslServer = https.createServer({
-    key:'',
-    cert: ''
-}, app)
-
-sslServer.listen(443, () => {
-    console.log("secure server running on port 443");
-})
+app.listen(3001,()=>{
+    console.log("escuchando en el puerto 8080");
+});
