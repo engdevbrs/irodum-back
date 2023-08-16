@@ -1,5 +1,6 @@
 const express = require('express')
 const bcrypt = require("bcryptjs")
+const https = require('https')
 const sharp = require('sharp')
 const rondasDeSal = 10;
 const fs = require('fs')
@@ -27,6 +28,12 @@ app.use(cors())
 app.use(express.json())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
+
+const file = fs.readFileSync('1DCD36CFCEDA9895C780B29551F879B1.txt')
+
+app.get('/.well-known/pki-validation/1DCD36CFCEDA9895C780B29551F879B1.txt',(req,res) =>{
+    res.sendFile(file)
+})
 
 const upload = multer({ dest: __dirname +'/images'})
 
@@ -772,6 +779,11 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(8080,()=>{
-    console.log("escuchando en el puerto 8080");
-});
+const sslServer = https.createServer({
+    key:'',
+    cert: ''
+}, app)
+
+sslServer.listen(443, () => {
+    console.log("secure server running on port 443");
+})
