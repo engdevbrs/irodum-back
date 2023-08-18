@@ -29,7 +29,7 @@ app.use(express.json())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
-const file = fs.readFileSync('./1DCD36CFCEDA9895C780B29551F879B1.txt')
+const file = fs.readFileSync(path.join(__dirname, '1DCD36CFCEDA9895C780B29551F879B1.txt'))
 
 app.get('/.well-known/pki-validation/1DCD36CFCEDA9895C780B29551F879B1.txt',(req,res) =>{
     res.sendFile(file)
