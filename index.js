@@ -30,6 +30,7 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 const cert = fs.readFileSync(path.join(__dirname, 'certificate.crt'))
+const key = fs.readFileSync(path.join(__dirname, 'private.pem'))
 
 const upload = multer({ dest: __dirname +'/images'})
 
@@ -775,11 +776,12 @@ function validateToken(req,res,next){
     })
 }
 
-const sslServer = https.createServer({
-    key:'',
-    cert: cert
-}, app)
+const cred = {
+    cert,
+    key
+}
 
-sslServer.listen(443, () => {
-    console.log("secure server running on port 443");
-})
+app.listen(443, () =>console.log("secure server running on port 443"))
+
+const httpServer = https.createServer(cred,app)
+httpServer.listen(443)
