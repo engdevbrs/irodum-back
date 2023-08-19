@@ -29,11 +29,7 @@ app.use(express.json())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
-const file = fs.readFileSync(path.join(__dirname, '1DCD36CFCEDA9895C780B29551F879B1.txt'))
-
-app.get('/.well-known/pki-validation/1DCD36CFCEDA9895C780B29551F879B1.txt',(req,res) =>{
-    res.sendFile(path.join(__dirname, '1DCD36CFCEDA9895C780B29551F879B1.txt'))
-})
+const cert = fs.readFileSync(path.join(__dirname, 'certificate.crt'))
 
 const upload = multer({ dest: __dirname +'/images'})
 
@@ -727,7 +723,7 @@ app.post('/api/recover-password',async (req,res,next) =>{
                     id: result[0].iduser_credentials
                 }
                 const token = jwt.sign(payload,secret, { expiresIn: '15m' })
-                const link = `http://irodum.com/resetear-password/${result[0].iduser_credentials}/${token}`
+                const link = `https://www.irodum.com/resetear-password/${result[0].iduser_credentials}/${token}`
                 const objectResetPass = {
                     mail: result[0].userName,
                     enlace: link
@@ -779,6 +775,11 @@ function validateToken(req,res,next){
     })
 }
 
-app.listen(8080,()=>{
-    console.log("escuchando en el puerto 8080");
-});
+const sslServer = https.createServer({
+    key:'',
+    cert: cert
+}, app)
+
+sslServer.listen(443, () => {
+    console.log("secure server running on port 443");
+})
