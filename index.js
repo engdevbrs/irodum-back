@@ -781,7 +781,7 @@ const cred = {
     key
 }
 
-app.listen(8443, () =>console.log("secure server running on port 443"))
+app.listen(8080, () =>console.log("secure server running"))
 
 const httpServer = https.createServer(cred,app)
-httpServer.listen(8443)
+httpServer.listen(8080)
