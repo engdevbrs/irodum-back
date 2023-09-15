@@ -272,10 +272,11 @@ app.put('/api/update-user', validateToken,(req,res)=>{
     facebook = (dataToUpdate[3].value === undefined || dataToUpdate[3].value === null) ? "" : dataToUpdate[3].value;
     cell = (dataToUpdate[4].value === undefined || dataToUpdate[4].value === null) ? "" : dataToUpdate[4].value;
     exp = (dataToUpdate[5].value === undefined || dataToUpdate[5].value === null) ? "0" : dataToUpdate[5].value;
-    colorInput = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
+    workResume = (dataToUpdate[6].value === undefined || dataToUpdate[6].value === null) ? "" : dataToUpdate[6].value;
+    colorInput = (dataToUpdate[7].value === undefined || dataToUpdate[7].value === null) ? "" : dataToUpdate[7].value;
 
     const sqlUpdate1 = "UPDATE Employed SET cellphone="+mysql.escape(cell)+",webSite="+mysql.escape(website)
-    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",colorEmployed="+mysql.escape(colorInput)
+    +",instagramSite="+mysql.escape(instagram)+",facebookSite="+mysql.escape(facebook)+",workResume="+mysql.escape(workResume)+",colorEmployed="+mysql.escape(colorInput)
     +",experienceYears="+mysql.escape(exp)+"WHERE Employed.emailEmployed="+mysql.escape(userLogged.userName);
 
     db.query(sqlUpdate1,(err,result) =>{
