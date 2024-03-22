@@ -1,6 +1,6 @@
 const express = require('express')
 const bcrypt = require("bcryptjs")
-const https = require('https')
+//const https = require('https')
 const sharp = require('sharp')
 const rondasDeSal = 10;
 const fs = require('fs')
@@ -75,33 +75,23 @@ app.post('/api/create-user',async (req,res)=>{
     const name = req.body.name;
     const lastname = (req.body.lastname === undefined || req.body.lastname === null) ? "" : req.body.lastname;
     const rut = req.body.rut;
-    const bornDate = (req.body.bornDate === undefined || req.body.bornDate === null) ? "" : req.body.bornDate;
-    const phone = req.body.phone;
     const email = req.body.email;
-    const region = req.body.region;
-    const city = req.body.city;
-    const comunne = req.body.comunne;
-    const area = (req.body.area === undefined || req.body.area === null) ? "" : req.body.area;
-    const role = (req.body.role === undefined || req.body.role === null) ? "" : req.body.role;
-    const yearsExperience = req.body.yearsExperience;
-    const resume = (req.body.resume === undefined || req.body.resume === null) ? "" : req.body.resume;
-    const pass = (req.body.pass === undefined || req.body.pass === null) ? "" : req.body.pass;
-    const economicActivity = (req.body.economicActivity === undefined || req.body.economicActivity === null) ? "" : (req.body.economicActivity).charAt(0).toUpperCase() + (req.body.economicActivity).slice(1).toLowerCase();
+    const pass = (req.body.password === undefined || req.body.password === null) ? "" : req.body.password;
     const agreeconditions = true;
     const type = parseInt(req.body.type,10);
 
-    const sqlInsertNewEmployed = "CALL SP_INSERT_EMPLOYED(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
+    const sqlInsertNewEmployed = "CALL SP_INSERT_USER(?,?,?,?,?,?,?,?,?,@p_return_code)";
     bcrypt.hash(pass, rondasDeSal, (err, palabraSecretaEncriptada) => {
         if (err) {
             res.status(500).send({ error: 'Error hasheando' });
         } else {
-            db.query(sqlInsertNewEmployed,[rut,email,phone,region,city,comunne,yearsExperience,resume,agreeconditions,dateRegister,name,lastname,bornDate,role,area,economicActivity,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'pyme',type],(err,result)=>{
+            db.query(sqlInsertNewEmployed,[rut,email,name,lastname,agreeconditions,dateRegister,palabraSecretaEncriptada,type === 0 ? 'independiente' : 'hiring',type],(err,result)=>{
                 let statusCode = null;
                 if(result.serverStatus === 2 && result.serverStatus !== undefined){
                     res.send(result);
                 }else if(result.length > 0){
                     statusCode = result[0][0]
-                    if(statusCode.RETURNED_SQLSTATE === '23000'){
+                    if(statusCode.RETURNED_SQLSTATE){
                         res.status(500).send({ error: 'Algo falló!' });
                     }
                 }
@@ -115,9 +105,11 @@ app.post('/api/create-user',async (req,res)=>{
 app.post('/api/login', (req,res)=>{
     const user = req.body.userName;
     const pass = req.body.userPass;
-    const sqlGetUserCredentials = "SELECT EC.userName, EC.userPass, E.employedClass FROM EmployedCredentials EC, Employed E WHERE E.idEmployed = EC.idEmployedCredentials AND EC.userName = "+mysql.escape(user);
+    const sqlGetUserCredentials = "SELECT UC.userName, UC.userPass, U.classUser FROM UserCredentials UC, Users U WHERE U.idUser = UC.idUserCredentials AND UC.userName = "+mysql.escape(user);
     db.query(sqlGetUserCredentials, async (err,result) =>{
-        if(result.length === 0){
+        if(err){
+            res.status(500).send({ error: 'Problema con el servidor' });
+        }else if(result.length === 0){
             res.status(403).send({ error: 'Error o contraseñas incorrectos' });
         }else{
             const passHashed = result[0].userPass;
@@ -127,7 +119,7 @@ app.post('/api/login', (req,res)=>{
                 res.header('authorization', accessToken).json({
                     message: 'User authenticated',
                     accessToken: accessToken,
-                    userType: result[0].employedClass
+                    userType: result[0].classUser
                 })
             }else{
                 res.status(403).send({ error: 'Error o contraseñas incorrectos' });
@@ -141,7 +133,7 @@ app.get('/api/localidades', async(req,res)=>{
     const sqlGetLocalidades = "SELECT r.region, p.provincia, c.comuna FROM regiones r, provincias p, comunas c  WHERE r.id = p.region_id AND p.id = c.provincia_id ORDER BY r.region ASC, p.provincia"
     db.query(sqlGetLocalidades,(err,result) =>{
         if(err){
-            res.send(err);
+            res.status(500).send('Problema obteniendo regiones,ciudades y comunas')
         }else{
             let arrayLocations = [];
             let region = '';
@@ -175,6 +167,318 @@ app.get('/api/localidades', async(req,res)=>{
         }
     })
 });
+
+app.post('/api/add-service',uploadComment.array('formFileMultiple',10),async (req,res)=>{
+    const body = JSON.parse(req.body.params)
+    const infoAboutService = body.basicInformation
+    const extraServices = body.extraService
+    const token = body.token
+    const date = new Date()
+    const dateAdded = date.toLocaleDateString()
+    const infoLogin = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    let arrayFiles = []
+
+    for(let i = 0; i < (req.files).length; i++){
+        const { originalname } = req.files[i];
+        const ref = `${Date.now()}-${originalname}`;
+        await sharp(req.files[i].path)
+            .resize({height: 400})
+            .toFile(path.join(__dirname, '/projects/commentsupload/' + ref))
+        let filesComment = {
+            filename: fs.readFileSync(path.join(__dirname, '/projects/commentsupload/' + ref)),
+            originalname: req.files[i].originalname
+        }
+        arrayFiles.push(filesComment)
+        await unlinkFile((req.files[i]).path)
+    }
+
+    if((req.files).length <= 6){
+        const sqlRating = "CALL SP_ADD_SERVICE(?,?,?,?,?,@p_return_code)"
+        db.query(sqlRating,[JSON.stringify(arrayFiles),JSON.stringify(infoAboutService),JSON.stringify(extraServices),infoLogin.userName,dateAdded],(err,result) =>{
+            if(err){
+                res.status(500).send('Problema subiendo servicio')
+            }else if(result.length > 0){
+                res.status(500).send(result[0][0].MESSAGE_TEXT)
+            }else{
+                res.send(result);
+            }
+        })
+    }
+});
+
+app.post('/api/add-skills',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const skillsdata = req.body.data;
+
+    if(skillsdata.length <= 5 && skillsdata.length >= 1){
+        const sqlAddSkills = "CALL SP_ADD_SKILLS(?,?,@p_return_code)"
+        db.query(sqlAddSkills,[JSON.stringify(skillsdata),userLogged.userName],(err,result) =>{
+            if(err){
+                res.status(500).send('Problema subiendo servicio')
+            }else if(result.length > 0){
+                res.status(500).send(result[0][0].MESSAGE_TEXT)
+            }else{
+                res.send(result);
+            }
+        })
+    }
+});
+
+app.put('/api/update-skills',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const skillsdata = req.body.data;
+
+    if(skillsdata.length <= 5 && skillsdata.length >= 1){
+        const sqlUpdateSkills = "CALL SP_UPDATE_SKILLS(?,?,@p_return_code)"
+        db.query(sqlUpdateSkills,[JSON.stringify(skillsdata),userLogged.userName],(err,result) =>{
+            if(err){
+                res.status(500).send('Problema subiendo servicio')
+            }else if(result.length > 0){
+                res.status(500).send(result[0][0].MESSAGE_TEXT)
+            }else{
+                res.send(result);
+            }
+        })
+    }
+});
+
+app.post('/api/get-skills',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const skillsdata = "SELECT S.SkillsUsers FROM SkillsUsers S, Users U WHERE S.idSkillsUser_FK = U.idUser AND U.emailUser="+mysql.escape(userLogged.userName)
+
+    db.query(skillsdata,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema subiendo servicio')
+        }else{
+            if(result.length === 0){
+                res.send(null)
+            }else{
+                res.send(result[0]);
+            }
+        }
+    })
+});
+
+
+app.post('/api/add-education',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const { grade, title, establishment,datestart,datefinish } = req.body.data
+
+    const sqlAddSkills = "CALL SP_ADD_EDUCATION(?,?,?,?,?,?,@p_return_code)"
+    db.query(sqlAddSkills,[JSON.stringify(grade), title, establishment,datestart,datefinish,userLogged.userName],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema agregando educacion')
+        }else if(result.length > 0){
+            res.status(500).send(result[0][0].MESSAGE_TEXT)
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.post('/api/get-education',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+
+    const sqlGetEducation = "SELECT E.degree, E.title, E.establishment, E.studystart, E.studyends FROM EducationHistory E, Users U WHERE U.idUser = E.idEducation_History_FK AND U.emailUser ="+mysql.escape(userLogged.userName)
+    db.query(sqlGetEducation,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema encontrando educacion')
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.get('/api/freelancer/get-education/:key',async (req,res)=>{
+    const idfreelancer = req.params.key
+    const sqlGetEducation = "SELECT E.degree, E.title, E.establishment, E.studystart, E.studyends FROM EducationHistory E, Users U WHERE U.idUser = E.idEducation_History_FK AND U.idUser ="+mysql.escape(idfreelancer)
+    db.query(sqlGetEducation,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema encontrando educacion')
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.get('/api/freelancer/get-workexperience/:key',async (req,res)=>{
+
+    const idfreelancer = req.params.key
+
+    const sqlGetWorkExp = "SELECT W.roleWork, W.companyWork, W.roledetailsWork, W.dateStart, W.dateFinish FROM WorkExperience W, Users U WHERE U.idUser = W.idWork_Experience_FK AND U.idUser ="+mysql.escape(idfreelancer)
+    db.query(sqlGetWorkExp,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema encontrando experiencia laboral')
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.post('/api/add-workexperience',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const { role, company, roledetails,datestart,datefinish } = req.body.data
+
+    const sqlWorkExp = "CALL SP_ADD_WORKEXPERIENCE(?,?,?,?,?,?,@p_return_code)"
+    db.query(sqlWorkExp,[role, company, roledetails,datestart,datefinish,userLogged.userName],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema agregando educacion')
+        }else if(result.length > 0){
+            res.status(500).send(result[0][0].MESSAGE_TEXT)
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+app.post('/api/get-workexperience',validateToken,async (req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+
+    const sqlGetWorkExp = "SELECT W.roleWork, W.companyWork, W.roledetailsWork, W.dateStart, W.dateFinish FROM WorkExperience W, Users U WHERE U.idUser = W.idWork_Experience_FK AND U.emailUser ="+mysql.escape(userLogged.userName)
+    db.query(sqlGetWorkExp,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema encontrando educacion')
+        }else{
+            res.send(result);
+        }
+    })
+});
+
+
+app.get('/api/get-services/:key', async (req, res) => {
+    const userId = req.params.key
+    const sqlGetServices = "SELECT S.infoAboutService,S.emailUser, S.extraServices,S.imageServices, S.idServices, U.photoUser, U.cityUser, U.communeUser,U.rankingUser,U.registerDay,U.workResume,U.slogan, I.nameUser, I.LastNameUser,I.workAreaUser, I.bornDate,I.priceWork FROM Services S, Users U, Independent I WHERE S.idServices="+mysql.escape(userId)+"AND S.idUser=U.idUser AND U.idUser = I.idUserIndp"
+    db.query(sqlGetServices,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo tus servicios')
+        }else{
+            result.map((service) => {
+                if((service.imageServices).length > 0 ){
+                    let element = JSON.parse((service.imageServices))
+                    element.forEach(value => {
+                        fs.writeFileSync(path.join(__dirname, '/projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
+                    });                }
+            })
+            res.send(result[0])
+        }
+    })
+})
+
+app.get('/api/get-all-services', async (req, res) => {
+    const sqlGetServices = "SELECT S.infoAboutService, S.extraServices,S.imageServices, S.idServices, U.photoUser, U.cityUser, U.communeUser,U.rankingUser, I.nameUser, I.LastNameUser FROM Services S, Users U, Independent I WHERE S.idUser=U.idUser AND U.idUser = I.idUserIndp"
+    db.query(sqlGetServices,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo tus servicios')
+        }else{
+            result.map((service) => {
+                if((service.imageServices).length > 0 ){
+                    let element = JSON.parse((service.imageServices))
+                    fs.writeFileSync(path.join(__dirname, '/projects/commentsdownload/' + element[0].originalname),Buffer.from(element[0].filename))
+                }
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/get-services',validateToken, async (req, res) => {
+    const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
+    const sqlGetServices = "SELECT S.infoAboutService, S.extraServices,S.imageServices, S.idServices FROM Services S WHERE S.emailUser="+mysql.escape(userLogged.userName);
+    db.query(sqlGetServices,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo tus servicios')
+        }else{
+            result.map((service) => {
+                if((service.imageServices).length > 0 ){
+                    let element = JSON.parse((service.imageServices))
+                    fs.writeFileSync(path.join(__dirname, '/projects/commentsdownload/' + element[0].originalname),Buffer.from(element[0].filename))
+                }
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.put('/api/update-user',validateToken, async (req, res) => {
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const userEmail = userLogged.userName
+    const userUpdateData = req.body.personalData
+    const nameUser = userUpdateData.name
+    const LastNameUser = userUpdateData.lastname
+    const rutUser = userUpdateData.rut
+    const cellphone = userUpdateData.cellphone
+    const bornDate = userUpdateData.birthday
+    const priceWork = userUpdateData.price
+    const gender = userUpdateData.gender
+    const slogan = userUpdateData.slogan
+    const workAreaUser = userUpdateData.specialization
+    const regionUser = userUpdateData.region
+    const cityUser = userUpdateData.city
+    const communeUser = userUpdateData.commune
+    const workResume = userUpdateData.presentation
+    const typeEmployed = userUpdateData.classUser === "independiente" ? 0 : 1
+
+    const sqlUpdateUser = "CALL SP_UPDATE_USERS(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)"
+        db.query(sqlUpdateUser,[userEmail,nameUser,LastNameUser,rutUser,cellphone,bornDate,priceWork,gender,slogan,workAreaUser,regionUser,cityUser,communeUser,workResume,typeEmployed],(err,result) =>{
+            if(err){
+                res.status(500).send('Problema actualizando usuario')
+            }else{
+                res.send(result);
+            }
+        })
+})
+
+app.get('/api/get-all-freelancers', async (req, res) => {
+    const sqlGetFreelancers = "CALL SP_GET_FREELANCERS()"
+    db.query(sqlGetFreelancers,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo freelancers')
+        }else{
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/services/freelancers/:key', async (req, res) => {
+    const userId = req.params.key
+    const sqlGetServices = "SELECT S.infoAboutService,S.imageServices, S.idServices, S.emailUser FROM Services S WHERE S.idUser="+mysql.escape(userId)
+    db.query(sqlGetServices,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo tus servicios')
+        }else{
+            result.map((service) => {
+                if((service.imageServices).length > 0 ){
+                    let element = JSON.parse((service.imageServices))
+                    element.forEach(value => {
+                        fs.writeFileSync(path.join(__dirname, '/projects/commentsdownload/' + value.originalname),Buffer.from(value.filename))
+                    });                }
+            })
+            res.send(result)
+        }
+    })
+})
+
+
+
+app.get('/api/get-freelancers/:key', async (req, res) => {
+    const userId = req.params.key
+    const sqlGetServices = "SELECT U.idUser,U.photoUser,U.rutUser,U.emailUser, U.cityUser,U.skillsUser, U.communeUser,U.rankingUser,U.cellphone,U.registerDay,U.workResume,U.slogan, I.nameUser, I.LastNameUser,I.workAreaUser, I.bornDate,I.priceWork,I.gender, SK.SkillsUsers FROM Users U, Independent I, Services S, SkillsUsers SK WHERE U.idUser="+mysql.escape(userId)+"AND U.idUser=I.idUserIndp AND U.idUser = SK.idSkillsUser_FK"
+    db.query(sqlGetServices,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo tus servicios')
+        }else{
+            res.send(result[0])
+        }
+    })
+})
+
 
 app.get('/api/usuarios', async (req,res)=>{
     res.header("Access-Control-Allow-Origin", "*");
@@ -239,7 +543,7 @@ app.get('/api/view/profile-pyme/:key', (req,res)=>{
 
 app.post('/api/user-info', validateToken, (req,res)=>{
     const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
-    const sqlGetUser = "SELECT * FROM Employed E, Independent I WHERE I.idEmployedIndp = E.idEmployed AND E.emailEmployed ="+mysql.escape(userLogged.userName);
+    const sqlGetUser = "SELECT * FROM Users U, Independent I WHERE I.idUserIndp = U.idUser AND U.emailUser ="+mysql.escape(userLogged.userName);
     db.query(sqlGetUser,(err,result) =>{
         if(err){
             res.status(500).send('Problema buscando información del usuario')
@@ -292,10 +596,13 @@ app.put('/api/update-user', validateToken,(req,res)=>{
 app.put('/api/images',upload.single('formFile'),async (req,res)=>{
     const userLogged = JSON.parse(Buffer.from(req.headers.authorization.split('.')[1], 'base64').toString());
     const file = req.file
+    if(file === undefined || file === "" || file === null){
+        return res.status(500).send('Problema subiendo Foto')
+    }
     const result = await uploadFile(file)
     await unlinkFile(file.path)
     const imgSrc = {imagePath: `/api/images/${result.Key}`}
-    const sqlInsert1 = "UPDATE Employed SET photoEmployed="+mysql.escape(result.Key)+"WHERE Employed.emailEmployed="+mysql.escape(userLogged.userName);
+    const sqlInsert1 = "UPDATE Users SET photoUser="+mysql.escape(result.Key)+"WHERE Users.emailUser="+mysql.escape(userLogged.userName);
     db.query(sqlInsert1,(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo Foto')
@@ -392,62 +699,129 @@ app.post('/api/image/upload-project/:key',uploadproject.single('photofile'),asyn
     })
 });
 
-app.post('/api/rating-worker',uploadComment.array('formFileMultiple',10),async (req,res)=>{
+app.post('/api/rating-service',async (req,res)=>{
 
     const date = new Date()
     const dateComment = date.toLocaleDateString()
-    const body = JSON.parse(req.body.params)
-    let arrayFiles = []
-    const clientName = body[0]
-    const clientLastName = body[1]
-    const clientmail = body[2]
-    const clientComment = body[3]
-    const aptitudRating = body[5]
-    const idEmployed = parseInt(body[6].employed,10)
-    const sumaRating = (aptitudRating.cuidadoso + aptitudRating.honestidad + aptitudRating.precio + aptitudRating.puntualidad + aptitudRating.responsabilidad) / 5;
+    const body = req.body
+    const values = Object.values(body)
+    const isSomeEmpty = values.some((element)=> element === "")
 
-    for(let i = 0; i < (req.files).length; i++){
-        const { originalname } = req.files[i];
-        const ref = `${Date.now()}-${originalname}`;
-        await sharp(req.files[i].path)
-            .resize({height: 400})
-            .toFile(path.join(__dirname, '/projects/commentsupload/' + ref))
-        let filesComment = {
-            filename: fs.readFileSync(path.join(__dirname, '/projects/commentsupload/' + ref)),
-            originalname: req.files[i].originalname
-        }
-        arrayFiles.push(filesComment)
-        await unlinkFile((req.files[i]).path)
-    }
-        
-    if((req.files).length <= 4){
-        const sqlRating = "CALL SP_SEND_RATINGEMPLOYED(?,?,?,?,?,?,?,?,?,@p_return_code)"
-        db.query(sqlRating,[idEmployed,clientName,clientLastName,clientComment,JSON.stringify(arrayFiles),JSON.stringify(aptitudRating),clientmail,dateComment,sumaRating],(err,result) =>{
+    const idservice = body.idservice
+    const emailservice = body.emailservice
+    const from = body.from
+    const rating = body.rating
+    const nameuser = body.nameuser
+    const comment = body.comment
+    const emailuser = body.emailuser
+
+    if(!isSomeEmpty){
+        const sqlRating = "CALL SP_SEND_RATING(?,?,?,?,?,?,?,?,@p_return_code)"
+        db.query(sqlRating,[idservice,emailservice,from,rating,nameuser,comment,emailuser,dateComment],(err,result) =>{
             if(err){
                 res.status(500).send('Problema subiendo evaluación')
             }else{
                 res.send(result);
             }
         })
+    }else{
+        res.status(400).send('Problema subiendo evaluación')
     }
 });
 
-app.post('/api/upload/speciality/:key',uploadEspeciality.array('specialityFormFile',10),async (req,res)=>{
+app.get('/api/rating-service/:key',async (req,res)=>{
+    const idService = parseInt(req.params.key,10)
+    const sqlGetRating = "CALL SP_GET_SERVICES_REVIEWS(?,@p_return_code)"
+    let allreviews = []
+    let reviewobjects = {}
+    db.query(sqlGetRating,[idService],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo evaluaciones')
+        }else{
+            if(result[0].length >= 1){
+                allreviews.push(result[0][0].ratingService)
+                result[0].map((values)=>{
+                    allreviews.push(reviewobjects.review = values)
+                })
+            }
+            res.send(allreviews);
+        }
+    })
+});
 
-    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
-    const arrayEspecialityDescript = JSON.parse(req.body.params)
-    const idWorker = parseInt(req.params.key)
-    let arrayFilesEsp = []
+app.get('/api/rating-freelancer/:key',async (req,res)=>{
+    const idService = parseInt(req.params.key,10)
+    const sqlGetRating = "CALL SP_GET_FREELANCER_REVIEWS(?,@p_return_code)"
+    let allreviews = []
+    let reviewobjects = {}
+    db.query(sqlGetRating,[idService],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo evaluaciones')
+        }else{
+            if(result[0].length >= 1){
+                allreviews.push(result[0][0].ratingfreelancer)
+                result[0].map((values)=>{
+                    allreviews.push(reviewobjects.review = values)
+                })
+            }
+            res.send(allreviews);
+        }
+    })
+});
+
+app.post('/api/get-comments',validateToken,async (req,res)=>{
+
+    const accessToken = req.body['authorization'] || req.body['x-access-token'] || req.headers['authorization'];
+    const userLogged = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const objectresume = {
+        service: [],
+        freelancer: [],
+    }
+    const sqlGetComments = "CALL SP_GET_COMMENTS(?,@p_return_code)";
+    db.query(sqlGetComments,[userLogged.userName],(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo comentarios')
+        }else{
+            result[0].map(value =>{
+                if(value.routeRating === "servicio"){
+                    objectresume.service.push(value)
+                }else{
+                    objectresume.freelancer.push(value)
+                }
+            })
+            res.send(objectresume)
+        }
+    })
+});
+
+app.post('/api/answer/reviews',validateToken,async (req,res)=>{
+
+    const id = req.body.data.id
+    const answer = req.body.data.response
+    const sqlAnswerComments = "UPDATE RatingsServices SET responseOfUser="+mysql.escape(answer)+"WHERE RatingsServices.idRating="+mysql.escape(id);
+    db.query(sqlAnswerComments,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema respondiendo comentarios')
+        }else{
+            res.send(result)
+        }
+    })
+});
+
+app.post('/api/upload/speciality',validateToken,uploadEspeciality.single('specialityFormFile'),async (req,res)=>{
+
+    const accessToken = req.body['authorization'] || req.body['x-access-token'] || req.headers['authorization'];
+    const userLogged = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const certificatedescription = req.body.params
 
     let filesEspeciality = {
-        filename: fs.readFileSync(path.join(__dirname, '/projects/especialityUpload/' + (req.files[0]).filename)),
-        originalname: req.files[0].originalname
+        filename: fs.readFileSync(path.join(__dirname, '/projects/especialityUpload/' + (req.file).filename)),
+        originalname: req.file.originalname
     }
-    arrayFilesEsp.push(filesEspeciality)
-    await unlinkFile((req.files[0]).path)
+    await unlinkFile((req.file).path)
 
-    const sqlEspeciality = "INSERT INTO EmployedEspeciality(especialityDescript,especialityDoc,EmailWorkerEspeciality,fileType,idEmployedEspeciality) VALUES(?,?,?,?,?)"
-    db.query(sqlEspeciality,[JSON.stringify(arrayEspecialityDescript),JSON.stringify(arrayFilesEsp),userLogged.userName,req.files[0].mimetype,idWorker],(err,result) =>{
+    const sqlEspeciality = "CALL SP_ADD_CERTIFICATIONS(?,?,?,?,@p_return_code)"
+    db.query(sqlEspeciality,[certificatedescription,JSON.stringify(filesEspeciality),userLogged.userName,req.file.mimetype],(err,result) =>{
         if(err){
             res.status(500).send('Problema subiendo especialidad')
         }else{
@@ -455,6 +829,42 @@ app.post('/api/upload/speciality/:key',uploadEspeciality.array('specialityFormFi
         }
     })
 });
+
+app.post('/api/view/speciality',validateToken, async (req, res) => {
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+    const sqlGetEspecilities = "SELECT E.idworkerEspeciality, E.fileType, E.especialityDescript, E.especialityDoc FROM EmployedEspeciality E, Users U  WHERE U.idUser = E.idEmployedEspeciality_FK AND U.emailUser="+mysql.escape(userLogged.userName);
+    db.query(sqlGetEspecilities,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo especialidades')
+        }else{
+            result.map(file => {
+                let specialityuser = JSON.parse(file.especialityDoc)
+                let fileToString = Buffer.from(specialityuser.filename)
+                fs.writeFileSync(path.join(__dirname, '/projects/especialitydownload/' + specialityuser.originalname),fileToString)
+            })
+            res.send(result)
+        }
+    })
+})
+
+app.get('/api/view/freelancer/speciality/:key',async (req, res) => {
+    const idService = parseInt(req.params.key,10)
+    const sqlGetEspecilities = "SELECT E.especialityDescript, E.especialityDoc, E.fileType FROM EmployedEspeciality E WHERE E.idEmployedEspeciality_FK ="+mysql.escape(idService);
+    db.query(sqlGetEspecilities,(err,result) =>{
+        if(err){
+            res.status(500).send('Problema obteniendo especialidades')
+        }else{
+            if(result.length >=1){
+                result.map(file => {
+                    let specialityuser = JSON.parse(file.especialityDoc)
+                    let fileToString = Buffer.from(specialityuser.filename)
+                    fs.writeFileSync(path.join(__dirname, '/projects/especialitydownload/' + specialityuser.originalname),fileToString)
+                })
+            }
+            res.send(result)
+        }
+    })
+})
 
 
 app.get('/api/download/speciality/:key', async (req, res) => {
@@ -531,41 +941,38 @@ app.get('/api/image/view-projects/:id', (req, res) => {
 
 app.post('/api/request-work',(req,res)=>{
 
-    let calle = null;
-    let pasaje = null;
-    let NumeroCasa = null;
-
-    let dptoDirec = null;
-    let NumeroPiso = null;
-    let NumeroDepto = null;
-
     const nombre = req.body[0];
     const apellidos = req.body[1];
     const rut = req.body[2];
-    const email = req.body[3];
-    const celular = '569'+req.body[4];
-    if(req.body[5] === false){
-        calle = req.body[6];
-        pasaje = req.body[7];
-        NumeroCasa = req.body[8];
-    }else{
-        dptoDirec = req.body[6];
-        NumeroPiso = req.body[7];
-        NumeroDepto = req.body[8];
-    }
+    const celular = '569'+req.body[3];
+    const email = req.body[4];
+    const descripcionTrabajo = req.body[5];
+    const id = parseInt(req.body[6],10)
+    const date = new Date()
+    const dateRequest = date.toLocaleDateString()
 
-    const comuna = req.body[11];
-    const descripcionTrabajo = req.body[12];
-    const estado = 'acordar'
-    const id = parseInt(req.body[16],10)
+    const sqlInsertRequest = "CALL SP_SEND_WORKREQUESTS(?,?,?,?,?,?,?,?,@p_return_code)";
 
-    const sqlInsertRequest = "CALL SP_SEND_WORKREQUESTS(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,@p_return_code)";
-
-    db.query(sqlInsertRequest,[id,nombre,apellidos,rut,email,celular,calle,pasaje,NumeroCasa,dptoDirec,NumeroPiso,NumeroDepto,comuna,descripcionTrabajo,estado],(err,result)=>{
+    db.query(sqlInsertRequest,[id,nombre,apellidos,rut,email,celular,dateRequest,descripcionTrabajo],(err,result)=>{
         if(err){
             res.status(500).send({ error: 'No se pudo enviar la solicitud!' });
         }else{
             res.send(result);
+        }
+    })
+});
+
+app.post('/api/get/request-work',validateToken,(req,res)=>{
+
+    const userLogged = JSON.parse(Buffer.from(req.body.authorization.split('.')[1], 'base64').toString());
+
+    const sqlGetRequestsWork = "CALL SP_GET_WORKREQUESTS(?,@p_return_code)";
+
+    db.query(sqlGetRequestsWork,[userLogged.userName],(err,result)=>{
+        if(err){
+            res.status(500).send({ error: 'No pudimos obtener sus solicitudes' });
+        }else{
+            res.send(result[0]);
         }
     })
 });
@@ -782,7 +1189,7 @@ const cred = {
     key
 }
 
-app.listen(8080, () =>console.log("secure server running"))
+app.listen(3001, () =>console.log("secure server running"))
 
-const httpServer = https.createServer(cred,app)
-httpServer.listen(8443)
+// const httpServer = https.createServer(cred,app)
+// httpServer.listen(8443)
