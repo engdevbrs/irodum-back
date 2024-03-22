@@ -1,6 +1,6 @@
 const express = require('express')
 const bcrypt = require("bcryptjs")
-//const https = require('https')
+const https = require('https')
 const sharp = require('sharp')
 const rondasDeSal = 10;
 const fs = require('fs')
@@ -1191,5 +1191,5 @@ const cred = {
 
 app.listen(3001, () =>console.log("secure server running"))
 
-// const httpServer = https.createServer(cred,app)
-// httpServer.listen(8443)
+const httpServer = https.createServer(cred,app)
+httpServer.listen(8443)
