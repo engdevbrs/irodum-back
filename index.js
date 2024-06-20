@@ -354,7 +354,7 @@ app.post('/api/get-workexperience',validateToken,async (req,res)=>{
 
 app.get('/api/get-services/:key', async (req, res) => {
     const userId = req.params.key
-    const sqlGetServices = "SELECT S.infoAboutService,S.emailUser, S.extraServices,S.imageServices, S.idServices, U.photoUser, U.cityUser, U.communeUser,U.rankingUser,U.registerDay,U.workResume,U.slogan, I.nameUser, I.LastNameUser,I.workAreaUser, I.bornDate,I.priceWork FROM Services S, Users U, Independent I WHERE S.idServices="+mysql.escape(userId)+"AND S.idUser=U.idUser AND U.idUser = I.idUserIndp"
+    const sqlGetServices = "SELECT S.infoAboutService,S.emailUser, S.extraServices,S.imageServices, S.idServices,S.ratingService,U.idUser, U.photoUser, U.cityUser, U.communeUser,U.rankingUser,U.registerDay,U.workResume,U.slogan, I.nameUser, I.LastNameUser,I.workAreaUser, I.bornDate,I.priceWork FROM Services S, Users U, Independent I WHERE S.idServices="+mysql.escape(userId)+"AND S.idUser=U.idUser AND U.idUser = I.idUserIndp"
     db.query(sqlGetServices,(err,result) =>{
         if(err){
             res.status(500).send('Problema obteniendo tus servicios')
@@ -1189,7 +1189,7 @@ const cred = {
     key
 }
 
-app.listen(3001, () =>console.log("secure server running"))
+// app.listen(3001, () =>console.log("secure server running"))
 
 const httpServer = https.createServer(cred,app)
 httpServer.listen(8443)
